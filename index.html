@@ -79,6 +79,24 @@
       border-radius: 12px;
       border-left: 4px solid #28a745;
     }
+    .scanned-result .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    .scanned-result .info-row:last-child {
+      border-bottom: none;
+    }
+    .scanned-result .label {
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    .scanned-result .value {
+      color: #155724;
+      font-weight: 500;
+    }
     @media (max-width: 500px) {
       .container { padding: 20px; }
       .btn { width: 100%; justify-content: center; }
@@ -91,7 +109,7 @@
     <div class="header">
       <i class="fas fa-qrcode"></i>
       <h2>QR Code Scanner</h2>
-      <p>Scan student QR code to auto-fill LRN</p>
+      <p>Scan QR code to auto-fill attendance form</p>
     </div>
 
     <div id="statusMessage" class="status-box status-info">
@@ -108,8 +126,8 @@
       <button class="btn btn-danger hidden" id="stopBtn" onclick="stopScanner()">
         <i class="fas fa-stop"></i> Stop
       </button>
-      <button class="btn btn-success hidden" id="useBtn" onclick="useLRN()">
-        <i class="fas fa-check"></i> Use This LRN
+      <button class="btn btn-success hidden" id="useBtn" onclick="useScannedData()">
+        <i class="fas fa-check"></i> Use This QR Code
       </button>
       <button class="btn btn-danger" onclick="window.close()">
         <i class="fas fa-times"></i> Close
@@ -125,7 +143,9 @@
   <script>
     let html5QrCode = null;
     let isScanning = false;
-    let scannedLRN = null;
+    let scannedData = null;
+    let scannedEmail = '';
+    let scannedLRN = '';
 
     function updateStatus(message, type) {
       const box = document.getElementById('statusMessage');
@@ -235,21 +255,60 @@
     function onScanSuccess(decodedText, decodedResult) {
       stopScanner();
       
-      scannedLRN = decodedText;
+      scannedData = decodedText;
       const resultDiv = document.getElementById('result');
+      const useBtn = document.getElementById('useBtn');
       
+      // Check if data contains pipe (email|lrn format)
+      if (decodedText.includes('|')) {
+        const parts = decodedText.split('|');
+        const email = parts[0].trim();
+        const lrn = parts[1].trim();
+        
+        if (email && email.includes('@') && /^\d{12}$/.test(lrn)) {
+          scannedEmail = email;
+          scannedLRN = lrn;
+          
+          resultDiv.innerHTML = `
+            <div class="scanned-result">
+              <i class="fas fa-check-circle" style="color: #28a745; font-size: 24px;"></i>
+              <div style="margin-top: 10px; font-weight: 600;">QR Code detected!</div>
+              <div style="margin: 10px 0; background: white; border-radius: 8px; padding: 10px;">
+                <div class="info-row">
+                  <span class="label"><i class="fas fa-envelope"></i> Email:</span>
+                  <span class="value">${email}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label"><i class="fas fa-id-card"></i> LRN:</span>
+                  <span class="value">${lrn}</span>
+                </div>
+              </div>
+              <div style="font-size: 13px; color: #155724;">Click "Use This QR Code" to auto-fill the attendance form.</div>
+            </div>
+          `;
+          updateText('✅ QR Code detected!');
+          useBtn.classList.remove('hidden');
+          return;
+        }
+      }
+      
+      // Legacy: Only LRN (12 digits) - for backwards compatibility
       if (/^\d{12}$/.test(decodedText)) {
+        scannedLRN = decodedText;
+        scannedEmail = '';
+        
         resultDiv.innerHTML = `
           <div class="scanned-result">
             <i class="fas fa-check-circle" style="color: #28a745; font-size: 24px;"></i>
             <div style="margin-top: 10px; font-weight: 600;">QR Code detected!</div>
             <div class="lrn-display">${decodedText}</div>
-            <div style="font-size: 13px; color: #155724;">Click "Use This LRN" to auto-fill the login form.</div>
+            <div style="font-size: 13px; color: #155724;">Click "Use This QR Code" to auto-fill the attendance form.</div>
           </div>
         `;
         updateText('✅ QR Code detected!');
-        document.getElementById('useBtn').classList.remove('hidden');
+        useBtn.classList.remove('hidden');
       } else {
+        // Invalid QR Code
         resultDiv.innerHTML = `
           <div style="background: #f8d7da; padding: 20px; border-radius: 12px; border-left: 4px solid #dc3545;">
             <i class="fas fa-exclamation-circle" style="color: #dc3545; font-size: 24px;"></i>
@@ -257,11 +316,13 @@
             <div style="font-size: 14px; word-break: break-all; background: white; padding: 10px; border-radius: 8px; margin-top: 10px;">
               ${decodedText}
             </div>
-            <div style="font-size: 12px; color: #721c24; margin-top: 10px;">This is not a valid LRN (must be 12 digits).</div>
+            <div style="font-size: 12px; color: #721c24; margin-top: 10px;">
+              Expected format: <strong>email@example.com|123456789012</strong> or <strong>12-digit LRN</strong>
+            </div>
           </div>
         `;
         updateText('❌ Invalid QR Code');
-        document.getElementById('useBtn').classList.add('hidden');
+        useBtn.classList.add('hidden');
       }
     }
 
@@ -288,29 +349,40 @@
       }
     }
 
-    function useLRN() {
-      if (!scannedLRN) return;
+    function useScannedData() {
+      if (!scannedLRN) {
+        alert('No QR code scanned yet. Please scan a QR code first.');
+        return;
+      }
 
-      // Send LRN back to the parent window (the portal)
+      // Determine what data to send
+      let dataToSend = scannedLRN;
+      if (scannedEmail && scannedLRN) {
+        // Send both email and LRN in the format email|lrn
+        dataToSend = scannedEmail + '|' + scannedLRN;
+      }
+
+      // Send data back to the parent window (the portal)
       if (window.opener && !window.opener.closed) {
         try {
           window.opener.postMessage({
             type: 'LRN_SCANNED',
-            lrn: scannedLRN
+            lrn: dataToSend
           }, '*');
           
           const resultDiv = document.getElementById('result');
           resultDiv.innerHTML = `
             <div style="background: #d4edda; padding: 20px; border-radius: 12px; border-left: 4px solid #28a745;">
               <i class="fas fa-check-circle" style="color: #28a745; font-size: 24px;"></i>
-              <div style="margin-top: 10px; font-weight: 600;">LRN sent to portal!</div>
-              <div class="lrn-display">${scannedLRN}</div>
-              <div style="font-size: 13px; color: #155724;">You can close this window and login.</div>
+              <div style="margin-top: 10px; font-weight: 600;">Data sent to portal!</div>
+              ${scannedEmail ? `<div style="font-size: 13px; color: #155724;"><strong>Email:</strong> ${scannedEmail}</div>` : ''}
+              <div style="font-size: 13px; color: #155724;"><strong>LRN:</strong> ${scannedLRN}</div>
+              <div style="font-size: 13px; color: #155724; margin-top: 8px;">You can close this window.</div>
             </div>
           `;
           
           document.getElementById('useBtn').classList.add('hidden');
-          updateText('✅ LRN sent to portal!');
+          updateText('✅ Data sent to portal!');
           
           setTimeout(() => {
             window.close();
@@ -326,14 +398,20 @@
     }
 
     function copyToClipboard() {
-      navigator.clipboard.writeText(scannedLRN).then(() => {
+      let textToCopy = scannedLRN;
+      if (scannedEmail && scannedLRN) {
+        textToCopy = `Email: ${scannedEmail}\nLRN: ${scannedLRN}`;
+      }
+      
+      navigator.clipboard.writeText(textToCopy).then(() => {
         const resultDiv = document.getElementById('result');
         resultDiv.innerHTML = `
           <div style="background: #d4edda; padding: 20px; border-radius: 12px; border-left: 4px solid #28a745;">
             <i class="fas fa-check-circle" style="color: #28a745; font-size: 24px;"></i>
-            <div style="margin-top: 10px; font-weight: 600;">LRN copied to clipboard!</div>
-            <div class="lrn-display">${scannedLRN}</div>
-            <div style="font-size: 13px; color: #155724;">Paste it into the LRN field in the portal.</div>
+            <div style="margin-top: 10px; font-weight: 600;">Data copied to clipboard!</div>
+            ${scannedEmail ? `<div style="font-size: 13px; color: #155724;"><strong>Email:</strong> ${scannedEmail}</div>` : ''}
+            <div style="font-size: 13px; color: #155724;"><strong>LRN:</strong> ${scannedLRN}</div>
+            <div style="font-size: 13px; color: #155724; margin-top: 8px;">Paste it into the portal form.</div>
           </div>
         `;
         document.getElementById('useBtn').classList.add('hidden');
@@ -343,13 +421,14 @@
         resultDiv.innerHTML = `
           <div style="background: #d1ecf1; padding: 20px; border-radius: 12px; border-left: 4px solid #17a2b8;">
             <i class="fas fa-info-circle" style="color: #17a2b8; font-size: 24px;"></i>
-            <div style="margin-top: 10px; font-weight: 600;">LRN detected:</div>
-            <div class="lrn-display">${scannedLRN}</div>
-            <div style="font-size: 13px; color: #0c5460;">Copy this number and paste it in the portal.</div>
+            <div style="margin-top: 10px; font-weight: 600;">Data detected:</div>
+            ${scannedEmail ? `<div style="font-size: 13px; color: #0c5460;"><strong>Email:</strong> ${scannedEmail}</div>` : ''}
+            <div style="font-size: 13px; color: #0c5460;"><strong>LRN:</strong> ${scannedLRN}</div>
+            <div style="font-size: 13px; color: #0c5460; margin-top: 8px;">Please copy manually.</div>
           </div>
         `;
         document.getElementById('useBtn').classList.add('hidden');
-        updateText('📋 LRN ready to copy');
+        updateText('📋 Data ready to copy');
       });
     }
 
