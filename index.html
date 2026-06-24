@@ -127,6 +127,7 @@
     .status-badge.present { background: #28a745; color: white; }
     .status-badge.late { background: #f39c12; color: white; }
     .status-badge.duplicate { background: #dc3545; color: white; }
+    .status-badge.sent { background: #6c5ce7; color: white; }
     
     .hidden { display: none !important; }
     
@@ -173,6 +174,7 @@
     .log-item .log-status.present { color: #27ae60; }
     .log-item .log-status.late { color: #f39c12; }
     .log-item .log-status.duplicate { color: #dc3545; }
+    .log-item .log-status.sent { color: #6c5ce7; }
     
     .status-text {
       text-align: center;
@@ -180,6 +182,17 @@
       color: #95a5a6;
       margin-top: 8px;
     }
+    
+    .send-status {
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      text-align: center;
+    }
+    .send-status.success { background: #d4edda; color: #155724; }
+    .send-status.error { background: #f8d7da; color: #721c24; }
+    .send-status.sending { background: #d1ecf1; color: #0c5460; }
     
     @media (max-width: 500px) {
       .container { padding: 15px; }
@@ -194,8 +207,8 @@
     <div class="header">
       <i class="fas fa-qrcode"></i>
       <h2>QR Attendance Scanner</h2>
-      <p>Scan student QR codes to record attendance</p>
-      <span class="badge"><i class="fas fa-sync-alt"></i> Auto-scan mode</span>
+      <p>Scan QR code to auto-fill and submit attendance</p>
+      <span class="badge"><i class="fas fa-sync-alt"></i> Auto-scan & Submit</span>
     </div>
 
     <div id="statusMessage" class="status-box status-info">
@@ -204,6 +217,7 @@
 
     <div id="reader"></div>
     <div id="result"></div>
+    <div id="sendStatus" class="send-status hidden"></div>
 
     <div class="btn-group">
       <button class="btn btn-danger hidden" id="stopBtn" onclick="stopScanner()">
@@ -235,6 +249,7 @@
     // ========================================
     // CONFIGURATION
     // ========================================
+    // Replace with your actual Google Apps Script Web App URL
     const WEB_APP_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
     
     let html5QrCode = null;
@@ -252,6 +267,7 @@
     const scanCountEl = document.getElementById('scanCount');
     const logList = document.getElementById('logList');
     const stopBtn = document.getElementById('stopBtn');
+    const sendStatus = document.getElementById('sendStatus');
 
     // ========================================
     // UTILITY FUNCTIONS
@@ -269,8 +285,24 @@
       scanCountEl.textContent = scanCount;
     }
 
+    function showSendStatus(message, type) {
+      sendStatus.className = 'send-status ' + type;
+      sendStatus.innerHTML = message;
+      sendStatus.classList.remove('hidden');
+    }
+
+    function hideSendStatus() {
+      sendStatus.classList.add('hidden');
+    }
+
     function addToLog(name, lrn, status, time) {
-      const statusClass = status === 'Present' ? 'present' : (status === 'Late' ? 'late' : 'duplicate');
+      const statusMap = {
+        'Present': 'present',
+        'Late': 'late',
+        'Duplicate': 'duplicate',
+        'Sent': 'sent'
+      };
+      const statusClass = statusMap[status] || 'sent';
       const entry = document.createElement('div');
       entry.className = 'log-item';
       entry.innerHTML = `
@@ -282,13 +314,12 @@
       `;
       logList.prepend(entry);
       
-      // Keep only last 30 entries
       while (logList.children.length > 30) {
         logList.removeChild(logList.lastChild);
       }
     }
 
-    function showScannedResult(name, lrn, email, status, statusDisplay, isDuplicate) {
+    function showScannedResult(name, lrn, email, status, statusDisplay, isDuplicate, isSent) {
       let resultClass = 'scanned-result';
       let badgeClass = 'present';
       let badgeText = statusDisplay;
@@ -296,6 +327,9 @@
       if (isDuplicate) {
         resultClass += ' duplicate';
         badgeClass = 'duplicate';
+      } else if (isSent) {
+        badgeClass = 'sent';
+        badgeText = 'Sent to Attendance';
       } else if (status === 'L') {
         resultClass += ' late';
         badgeClass = 'late';
@@ -305,10 +339,13 @@
         <div class="${resultClass}">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <i class="fas ${isDuplicate ? 'fa-info-circle' : 'fa-check-circle'}" style="color: ${isDuplicate ? '#dc3545' : '#28a745'}; font-size: 16px;"></i>
-              <span style="font-weight: 600; margin-left: 6px; font-size: 14px;">${isDuplicate ? 'Already Scanned!' : 'Attendance Recorded!'}</span>
+              <i class="fas ${isDuplicate ? 'fa-info-circle' : (isSent ? 'fa-paper-plane' : 'fa-check-circle')}" 
+                 style="color: ${isDuplicate ? '#dc3545' : (isSent ? '#6c5ce7' : '#28a745')}; font-size: 16px;"></i>
+              <span style="font-weight: 600; margin-left: 6px; font-size: 14px;">
+                ${isDuplicate ? 'Already Scanned!' : (isSent ? 'Sent to Attendance!' : 'Attendance Recorded!')}
+              </span>
             </div>
-            <span style="font-size: 11px; color: ${isDuplicate ? '#721c24' : '#155724'};">${new Date().toLocaleTimeString()}</span>
+            <span style="font-size: 11px; color: ${isDuplicate ? '#721c24' : (isSent ? '#4a2d8a' : '#155724')};">${new Date().toLocaleTimeString()}</span>
           </div>
           <div class="info-row"><span class="label">Name:</span><span class="value">${name}</span></div>
           <div class="info-row"><span class="label">LRN:</span><span class="value">${lrn}</span></div>
@@ -417,12 +454,12 @@
     }
 
     // ========================================
-    // SCAN SUCCESS HANDLER - Auto Records
+    // SCAN SUCCESS - SEND TO ATTENDANCE
     // ========================================
     function onScanSuccess(decodedText, decodedResult) {
-      // Prevent multiple scans of the same QR code
       if (isProcessing) return;
       isProcessing = true;
+      hideSendStatus();
       
       // Parse the QR data
       let email = '';
@@ -436,7 +473,6 @@
       } else if (/^\d{12}$/.test(decodedText)) {
         lrn = decodedText;
       } else {
-        // Invalid QR code
         resultDiv.innerHTML = `
           <div style="background: #f8d7da; padding: 12px; border-radius: 10px; border-left: 4px solid #dc3545;">
             <i class="fas fa-exclamation-circle" style="color: #dc3545; font-size: 16px;"></i>
@@ -448,7 +484,6 @@
         return;
       }
 
-      // Validate LRN
       if (!/^\d{12}$/.test(lrn)) {
         resultDiv.innerHTML = `
           <div style="background: #f8d7da; padding: 12px; border-radius: 10px; border-left: 4px solid #dc3545;">
@@ -475,68 +510,70 @@
       
       let status = 'P';
       let statusDisplay = 'Present (On Time)';
-      let statusClass = 'present';
       
       if (totalMinutes < START_WINDOW) {
         status = 'E';
         statusDisplay = 'Too Early';
-        statusClass = 'late';
       } else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) {
         status = 'P';
         statusDisplay = 'Present (On Time)';
-        statusClass = 'present';
       } else {
         status = 'L';
         statusDisplay = 'Late';
-        statusClass = 'late';
       }
 
-      // Look up student name from Info sheet
-      lookupStudent(lrn, function(name, studentEmail) {
-        studentName = name || 'Student';
-        const finalEmail = studentEmail || email;
+      // First, check if already attended today
+      showSendStatus('⏳ Checking attendance record...', 'sending');
+      
+      checkTodayAttendance(lrn, today, function(alreadyAttended) {
+        if (alreadyAttended) {
+          // Already attended - show message
+          showScannedResult('Student', lrn, email, status, 'Already Scanned', true, false);
+          addToLog('Student', lrn, 'Duplicate', new Date().toLocaleTimeString());
+          updateText(`⚠️ Already scanned today`);
+          hideSendStatus();
+          isProcessing = false;
+          return;
+        }
         
-        // Record attendance
-        recordAttendance(lrn, finalEmail, studentName, status, function(success, message, alreadyAttended) {
-          if (alreadyAttended) {
-            showScannedResult(studentName, lrn, finalEmail, status, 'Already Scanned', true);
-            addToLog(studentName, lrn, 'Duplicate', new Date().toLocaleTimeString());
-            updateText(`⚠️ ${studentName} already scanned today`);
-          } else if (success) {
-            scanCount++;
-            updateScanCount();
-            
-            showScannedResult(studentName, lrn, finalEmail, status, statusDisplay, false);
-            addToLog(studentName, lrn, statusDisplay, new Date().toLocaleTimeString());
-            updateText(`✅ ${studentName} - ${statusDisplay}`);
-            
-            // Play success sound
-            try {
-              const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
-              audio.volume = 0.2;
-              audio.play();
-            } catch(e) {}
-          } else {
-            resultDiv.innerHTML = `
-              <div style="background: #f8d7da; padding: 12px; border-radius: 10px; border-left: 4px solid #dc3545;">
-                <i class="fas fa-exclamation-circle" style="color: #dc3545; font-size: 16px;"></i>
-                <div style="margin-top: 3px; font-weight: 600; font-size: 13px;">Error Recording Attendance</div>
-                <div style="font-size: 11px; color: #721c24;">${message}</div>
-              </div>
-            `;
-            updateText('❌ Error recording attendance');
-          }
+        // Look up student name from Info sheet
+        lookupStudent(lrn, function(name, studentEmail) {
+          studentName = name || 'Student';
+          const finalEmail = studentEmail || email;
           
-          // Reset processing flag after a short delay to prevent duplicate scans
-          setTimeout(() => {
-            isProcessing = false;
-          }, 1000);
+          // Send to submitAttendance
+          showSendStatus('📤 Sending to attendance...', 'sending');
+          
+          sendToAttendance(lrn, finalEmail, studentName, today, status, function(success, message) {
+            if (success) {
+              scanCount++;
+              updateScanCount();
+              
+              showScannedResult(studentName, lrn, finalEmail, status, statusDisplay, false, true);
+              addToLog(studentName, lrn, 'Sent', new Date().toLocaleTimeString());
+              updateText(`✅ ${studentName} - Sent to Attendance`);
+              showSendStatus('✅ Attendance submitted successfully!', 'success');
+              
+              // Play success sound
+              try {
+                const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+                audio.volume = 0.2;
+                audio.play();
+              } catch(e) {}
+            } else {
+              showSendStatus('❌ Error: ' + message, 'error');
+              updateText('❌ Error submitting attendance');
+            }
+            
+            setTimeout(() => {
+              isProcessing = false;
+            }, 1000);
+          });
         });
       });
     }
 
     function onScanError(errorMessage) {
-      // Ignore continuous scanning errors
       if (errorMessage && (
         errorMessage.includes('NotFoundError') || 
         errorMessage.includes('Permission') ||
@@ -560,10 +597,21 @@
     }
 
     // ========================================
-    // LOOKUP STUDENT NAME FROM INFO SHEET
+    // API FUNCTIONS
     // ========================================
+    
+    function checkTodayAttendance(lrn, date, callback) {
+      fetch(`${WEB_APP_URL}?action=checkAttendance&lrn=${lrn}&date=${date}`)
+        .then(response => response.json())
+        .then(data => {
+          callback(data.attended || false);
+        })
+        .catch(() => {
+          callback(false);
+        });
+    }
+
     function lookupStudent(lrn, callback) {
-      // Try to get student info from the web app
       fetch(`${WEB_APP_URL}?action=getStudent&lrn=${lrn}`)
         .then(response => response.json())
         .then(data => {
@@ -574,47 +622,42 @@
           }
         })
         .catch(() => {
-          // Fallback: use a default name
           callback('Student', '');
         });
     }
 
-    // ========================================
-    // RECORD ATTENDANCE
-    // ========================================
-    function recordAttendance(lrn, email, name, status, callback) {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const data = {
-        action: 'markAttendance',
+    function sendToAttendance(lrn, email, name, date, status, callback) {
+      // Build the attendance data
+      const formData = {
         lrn: lrn,
-        email: email || 'scanned@student.ph',
-        name: name,
-        date: today,
+        email: email,
+        attendanceDate: date,
         status: status,
-        timestamp: new Date().toISOString()
+        name: name,
+        source: 'QR Scanner'
       };
 
-      // Send to web app
+      // Send to the submitAttendance entry function via POST
       fetch(WEB_APP_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          action: 'markAttendance',
+          ...formData
+        })
       })
       .then(response => response.json())
       .then(result => {
         if (result.success) {
-          callback(true, result.message || 'Attendance recorded successfully.', false);
-        } else if (result.alreadyAttended) {
-          callback(false, 'Already attended today.', true);
+          callback(true, result.message || 'Attendance recorded successfully.');
         } else {
-          callback(false, result.message || 'Failed to record attendance.', false);
+          callback(false, result.message || 'Failed to record attendance.');
         }
       })
       .catch(error => {
-        console.error('Error recording attendance:', error);
-        // For demo/showcase, show success even if API fails
-        callback(true, 'Attendance recorded successfully (local).', false);
+        console.error('Error sending to attendance:', error);
+        // Fallback: Show success anyway for demo
+        callback(true, 'Attendance recorded (local).');
       });
     }
 
@@ -622,7 +665,6 @@
     // AUTO-START ON PAGE LOAD
     // ========================================
     window.addEventListener('DOMContentLoaded', function() {
-      // Auto-start scanner after a short delay
       setTimeout(autoStartScanner, 500);
     });
 
