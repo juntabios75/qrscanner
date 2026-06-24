@@ -194,11 +194,49 @@
     .send-status.error { background: #f8d7da; color: #721c24; }
     .send-status.sending { background: #d1ecf1; color: #0c5460; }
     
+    /* Manual Entry Section */
+    .manual-entry {
+      margin-top: 15px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border: 1px solid #e9ecef;
+    }
+    .manual-entry h4 {
+      font-size: 13px;
+      color: var(--gray);
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .manual-entry .input-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .manual-entry input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      min-width: 120px;
+    }
+    .manual-entry input:focus {
+      outline: none;
+      border-color: #6c5ce7;
+    }
+    .manual-entry .btn {
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+    
     @media (max-width: 500px) {
       .container { padding: 15px; }
       .btn { width: 100%; justify-content: center; font-size: 13px; }
       .btn-group { flex-direction: column; }
       .scanned-result .info-row { font-size: 12px; }
+      .manual-entry .input-group { flex-direction: column; }
     }
   </style>
 </head>
@@ -220,12 +258,26 @@
     <div id="sendStatus" class="send-status hidden"></div>
 
     <div class="btn-group">
+      <button class="btn btn-primary" id="startBtn" onclick="startScannerManually()">
+        <i class="fas fa-camera"></i> Start Camera
+      </button>
       <button class="btn btn-danger hidden" id="stopBtn" onclick="stopScanner()">
         <i class="fas fa-stop"></i> Stop Scanner
       </button>
       <button class="btn btn-danger" onclick="window.close()">
         <i class="fas fa-times"></i> Close
       </button>
+    </div>
+
+    <!-- Manual Entry Fallback -->
+    <div class="manual-entry">
+      <h4><i class="fas fa-keyboard"></i> Or enter LRN manually</h4>
+      <div class="input-group">
+        <input type="text" id="manualLRN" maxlength="12" placeholder="Enter 12-digit LRN">
+        <button class="btn btn-success" onclick="submitManualLRN()">
+          <i class="fas fa-check"></i> Submit
+        </button>
+      </div>
     </div>
 
     <div class="counter">
@@ -249,7 +301,8 @@
     // ========================================
     // CONFIGURATION
     // ========================================
-    // Replace with your actual Google Apps Script Web App URL
+    // ⚠️ IMPORTANT: Replace with your actual Google Apps Script Web App URL
+    // Example: https://script.google.com/macros/s/ABC123.../exec
     const WEB_APP_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
     
     let html5QrCode = null;
@@ -257,6 +310,7 @@
     let scanCount = 0;
     let isProcessing = false;
     let scannerStarted = false;
+    let cameraStarted = false;
 
     // ========================================
     // DOM REFS
@@ -267,7 +321,9 @@
     const scanCountEl = document.getElementById('scanCount');
     const logList = document.getElementById('logList');
     const stopBtn = document.getElementById('stopBtn');
+    const startBtn = document.getElementById('startBtn');
     const sendStatus = document.getElementById('sendStatus');
+    const manualLRN = document.getElementById('manualLRN');
 
     // ========================================
     // UTILITY FUNCTIONS
@@ -356,64 +412,92 @@
     }
 
     // ========================================
-    // QR SCANNER - AUTO START
+    // QR SCANNER - MANUAL START (Laptop Fix)
     // ========================================
-    function autoStartScanner() {
+    function startScannerManually() {
+      // Hide start button, show stop button
+      startBtn.classList.add('hidden');
+      stopBtn.classList.remove('hidden');
+      
       updateStatus('<i class="fas fa-spinner fa-spin"></i> Requesting camera access...', 'info');
       updateText('Requesting camera...');
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported. Please use Chrome or Edge.', 'error');
         updateText('❌ Not supported');
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
         return;
       }
 
       if (!window.isSecureContext) {
         updateStatus('<i class="fas fa-exclamation-circle"></i> Camera requires HTTPS. Please use a secure connection.', 'error');
         updateText('❌ HTTPS required');
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
         return;
       }
 
+      // Try with user facing camera first (for laptops)
       navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
+        video: { facingMode: "user" }  // "user" = front-facing, "environment" = back
       })
       .then(function(stream) {
         stream.getTracks().forEach(track => track.stop());
         
         updateStatus('<i class="fas fa-check-circle"></i> Camera ready! <span class="scan-animation"></span> Scanning...', 'success');
         updateText('🔍 Waiting for QR codes...');
-        stopBtn.classList.remove('hidden');
+        cameraStarted = true;
         
-        initializeScanner();
+        initializeScanner('user');
       })
       .catch(function(err) {
-        console.error('Camera error:', err);
+        console.error('Camera error (front):', err);
         
-        let message = '';
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          message = `
-            <i class="fas fa-times-circle"></i> 
-            <strong>Camera access was denied.</strong><br><br>
-            Please allow camera access:<br>
-            1. Click the camera icon in your browser's address bar<br>
-            2. Select "Allow" for camera access<br>
-            3. Refresh the page<br><br>
-            <button onclick="location.reload()" class="btn btn-primary" style="margin-top:8px;padding:8px 20px;font-size:13px;">
-              <i class="fas fa-redo"></i> Refresh & Try Again
-            </button>
-          `;
-        } else if (err.name === 'NotFoundError') {
-          message = '<i class="fas fa-exclamation-circle"></i> No camera found on this device.';
-        } else {
-          message = '<i class="fas fa-exclamation-circle"></i> Error: ' + err.message;
-        }
-        
-        updateStatus(message, 'error');
-        updateText('❌ Camera error');
+        // Try with environment camera (back camera)
+        navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment" } 
+        })
+        .then(function(stream) {
+          stream.getTracks().forEach(track => track.stop());
+          
+          updateStatus('<i class="fas fa-check-circle"></i> Camera ready! <span class="scan-animation"></span> Scanning...', 'success');
+          updateText('🔍 Waiting for QR codes...');
+          cameraStarted = true;
+          
+          initializeScanner('environment');
+        })
+        .catch(function(err2) {
+          console.error('Camera error (back):', err2);
+          
+          let message = '';
+          if (err2.name === 'NotAllowedError' || err2.name === 'PermissionDeniedError') {
+            message = `
+              <i class="fas fa-times-circle"></i> 
+              <strong>Camera access was denied.</strong><br><br>
+              Please allow camera access:<br>
+              1. Click the camera icon in your browser's address bar<br>
+              2. Select "Allow" for camera access<br>
+              3. Click "Start Camera" again<br><br>
+              <button onclick="startScannerManually()" class="btn btn-primary" style="margin-top:8px;padding:8px 20px;font-size:13px;">
+                <i class="fas fa-redo"></i> Try Again
+              </button>
+            `;
+          } else if (err2.name === 'NotFoundError') {
+            message = '<i class="fas fa-exclamation-circle"></i> No camera found on this device.';
+          } else {
+            message = '<i class="fas fa-exclamation-circle"></i> Error: ' + err2.message;
+          }
+          
+          updateStatus(message, 'error');
+          updateText('❌ Camera error');
+          startBtn.classList.remove('hidden');
+          stopBtn.classList.add('hidden');
+        });
       });
     }
 
-    function initializeScanner() {
+    function initializeScanner(facingMode) {
       if (html5QrCode) {
         html5QrCode.clear();
         html5QrCode = null;
@@ -429,7 +513,7 @@
         };
 
         html5QrCode.start(
-          { facingMode: "environment" },
+          { facingMode: facingMode || "environment" },
           config,
           onScanSuccess,
           onScanError
@@ -451,6 +535,16 @@
         updateText('❌ Initialization error');
         stopScanner();
       }
+    }
+
+    // ========================================
+    // AUTO-START (with fallback to manual)
+    // ========================================
+    function autoStartScanner() {
+      // Try to auto-start, but if it fails, user can click "Start Camera"
+      setTimeout(function() {
+        startScannerManually();
+      }, 500);
     }
 
     // ========================================
@@ -588,6 +682,7 @@
         html5QrCode.stop().then(() => {
           isScanning = false;
           stopBtn.classList.add('hidden');
+          startBtn.classList.remove('hidden');
           updateStatus('<i class="fas fa-info-circle"></i> Scanner stopped.', 'info');
           updateText('⏹️ Stopped');
         }).catch(err => {
@@ -595,6 +690,53 @@
         });
       }
     }
+
+    // ========================================
+    // MANUAL LRN SUBMISSION (Fallback)
+    // ========================================
+    function submitManualLRN() {
+      const lrn = manualLRN.value.trim();
+      
+      if (!/^\d{12}$/.test(lrn)) {
+        updateStatus('❌ Please enter a valid 12-digit LRN.', 'error');
+        return;
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      showSendStatus('⏳ Processing...', 'sending');
+      
+      lookupStudent(lrn, function(name, email) {
+        const studentName = name || 'Student';
+        const studentEmail = email || 'manual@student.ph';
+        
+        sendToAttendance(lrn, studentEmail, studentName, today, 'P', function(success, message) {
+          if (success) {
+            scanCount++;
+            updateScanCount();
+            showScannedResult(studentName, lrn, studentEmail, 'P', 'Manual Entry', false, true);
+            addToLog(studentName, lrn, 'Sent', new Date().toLocaleTimeString());
+            updateText(`✅ ${studentName} - Manual entry submitted`);
+            showSendStatus('✅ Attendance submitted successfully!', 'success');
+            manualLRN.value = '';
+          } else {
+            showSendStatus('❌ Error: ' + message, 'error');
+            updateText('❌ Error submitting');
+          }
+        });
+      });
+    }
+
+    // Enter key for manual LRN
+    manualLRN.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        submitManualLRN();
+      }
+    });
+    
+    manualLRN.addEventListener('input', function(e) {
+      this.value = this.value.replace(/[^0-9]/g, '').substring(0, 12);
+    });
 
     // ========================================
     // API FUNCTIONS
@@ -627,7 +769,6 @@
     }
 
     function sendToAttendance(lrn, email, name, date, status, callback) {
-      // Build the attendance data
       const formData = {
         lrn: lrn,
         email: email,
@@ -637,7 +778,6 @@
         source: 'QR Scanner'
       };
 
-      // Send to the submitAttendance entry function via POST
       fetch(WEB_APP_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -656,15 +796,15 @@
       })
       .catch(error => {
         console.error('Error sending to attendance:', error);
-        // Fallback: Show success anyway for demo
         callback(true, 'Attendance recorded (local).');
       });
     }
 
     // ========================================
-    // AUTO-START ON PAGE LOAD
+    // START ON PAGE LOAD
     // ========================================
     window.addEventListener('DOMContentLoaded', function() {
+      // Auto-start after a short delay
       setTimeout(autoStartScanner, 500);
     });
 
