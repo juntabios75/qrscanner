@@ -180,7 +180,7 @@
       <i class="fas fa-qrcode"></i>
       <h2>QR Attendance Scanner</h2>
       <p>Scan QR code to auto-fill attendance form</p>
-      <span class="badge"><i class="fas fa-sync-alt"></i> Auto-send to form</span>
+      <span class="badge"><i class="fas fa-sync-alt"></i> Auto-send & Stay Open</span>
     </div>
 
     <div id="statusMessage" class="status-box status-info">
@@ -290,6 +290,14 @@
       `;
     }
 
+    function showReadyMessage() {
+      resultDiv.innerHTML = `
+        <div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">
+          <i class="fas fa-camera"></i> Ready for next student. Scan another QR code.
+        </div>
+      `;
+    }
+
     // ========================================
     // QR SCANNER
     // ========================================
@@ -392,7 +400,7 @@
     }
 
     // ========================================
-    // SCAN SUCCESS - SEND DATA TO PARENT
+    // SCAN SUCCESS - SEND DATA TO PARENT & STAY OPEN
     // ========================================
     function onScanSuccess(decodedText, decodedResult) {
       if (isProcessing) return;
@@ -475,25 +483,35 @@
             scanCount++;
             updateScanCount();
             
-            // Close scanner after 2 seconds
+            // ========================================
+            // RESET FOR NEXT STUDENT - STAY OPEN
+            // ========================================
             setTimeout(function() {
-              window.close();
+              // Show ready message
+              showReadyMessage();
+              updateText('🔍 Ready for next student');
+              hideSendStatus();
+              isProcessing = false;
+              
+              // The scanner stays running - no close!
             }, 2000);
             
           } catch(e) {
             console.error('Error sending to parent:', e);
             showSendStatus('⚠️ Could not send to form. Copy the LRN below.', 'warning');
             copyToClipboard(lrn, finalEmail);
+            setTimeout(function() {
+              isProcessing = false;
+            }, 1500);
           }
         } else {
           // No parent window - copy to clipboard
           showSendStatus('⚠️ No parent window found. Copy the data below.', 'warning');
           copyToClipboard(lrn, finalEmail);
+          setTimeout(function() {
+            isProcessing = false;
+          }, 1500);
         }
-        
-        setTimeout(() => {
-          isProcessing = false;
-        }, 1500);
       });
     }
 
@@ -547,7 +565,9 @@
             manualLRN.value = '';
             
             setTimeout(function() {
-              window.close();
+              showReadyMessage();
+              updateText('🔍 Ready for next student');
+              hideSendStatus();
             }, 2000);
           } catch(e) {
             copyToClipboard(lrn, studentEmail);
