@@ -51,7 +51,7 @@
     #reader { width: 100%; margin: 0 auto; }
     #reader video { border-radius: 12px; width: 100% !important; }
     
-    #result { margin-top: 12px; text-align: center; min-height: 40px; max-height: 250px; overflow-y: auto; }
+    #result { margin-top: 12px; text-align: center; min-height: 40px; max-height: 300px; overflow-y: auto; }
     
     .btn {
       padding: 10px 20px;
@@ -302,7 +302,6 @@
     // CONFIGURATION
     // ========================================
     // ⚠️ IMPORTANT: Replace with your actual Google Apps Script Web App URL
-    // Example: https://script.google.com/macros/s/ABC123.../exec
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbys-BkQT0jRnPC6q5neSRj6JqmOFG_BKa2luh1uI7gwYjaHRDOYmMCOvBDqbV7V310PrA/exec';
     
     let html5QrCode = null;
@@ -412,10 +411,9 @@
     }
 
     // ========================================
-    // QR SCANNER - MANUAL START (Laptop Fix)
+    // QR SCANNER - MANUAL START
     // ========================================
     function startScannerManually() {
-      // Hide start button, show stop button
       startBtn.classList.add('hidden');
       stopBtn.classList.remove('hidden');
       
@@ -423,7 +421,7 @@
       updateText('Requesting camera...');
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported. Please use Chrome or Edge.', 'error');
+        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported.', 'error');
         updateText('❌ Not supported');
         startBtn.classList.remove('hidden');
         stopBtn.classList.add('hidden');
@@ -431,16 +429,15 @@
       }
 
       if (!window.isSecureContext) {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera requires HTTPS. Please use a secure connection.', 'error');
+        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera requires HTTPS.', 'error');
         updateText('❌ HTTPS required');
         startBtn.classList.remove('hidden');
         stopBtn.classList.add('hidden');
         return;
       }
 
-      // Try with user facing camera first (for laptops)
       navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "user" }  // "user" = front-facing, "environment" = back
+        video: { facingMode: "user" } 
       })
       .then(function(stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -454,7 +451,6 @@
       .catch(function(err) {
         console.error('Camera error (front):', err);
         
-        // Try with environment camera (back camera)
         navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: "environment" } 
         })
@@ -507,7 +503,7 @@
         html5QrCode = new Html5Qrcode("reader");
 
         const config = {
-          fps: 10,
+          fps: 15,
           qrbox: { width: 280, height: 280 },
           aspectRatio: 1.0
         };
@@ -537,11 +533,7 @@
       }
     }
 
-    // ========================================
-    // AUTO-START (with fallback to manual)
-    // ========================================
     function autoStartScanner() {
-      // Try to auto-start, but if it fails, user can click "Start Camera"
       setTimeout(function() {
         startScannerManually();
       }, 500);
@@ -616,53 +608,51 @@
         statusDisplay = 'Late';
       }
 
-      // First, check if already attended today
-      showSendStatus('⏳ Checking attendance record...', 'sending');
+      // Show sending status
+      showSendStatus('⏳ Sending to attendance...', 'sending');
       
-      checkTodayAttendance(lrn, today, function(alreadyAttended) {
-        if (alreadyAttended) {
-          // Already attended - show message
-          showScannedResult('Student', lrn, email, status, 'Already Scanned', true, false);
-          addToLog('Student', lrn, 'Duplicate', new Date().toLocaleTimeString());
-          updateText(`⚠️ Already scanned today`);
-          hideSendStatus();
-          isProcessing = false;
-          return;
-        }
+      // Look up student name from Info sheet
+      lookupStudent(lrn, function(name, studentEmail) {
+        studentName = name || 'Student';
+        const finalEmail = studentEmail || email;
         
-        // Look up student name from Info sheet
-        lookupStudent(lrn, function(name, studentEmail) {
-          studentName = name || 'Student';
-          const finalEmail = studentEmail || email;
-          
-          // Send to submitAttendance
-          showSendStatus('📤 Sending to attendance...', 'sending');
-          
-          sendToAttendance(lrn, finalEmail, studentName, today, status, function(success, message) {
-            if (success) {
-              scanCount++;
-              updateScanCount();
-              
-              showScannedResult(studentName, lrn, finalEmail, status, statusDisplay, false, true);
-              addToLog(studentName, lrn, 'Sent', new Date().toLocaleTimeString());
-              updateText(`✅ ${studentName} - Sent to Attendance`);
-              showSendStatus('✅ Attendance submitted successfully!', 'success');
-              
-              // Play success sound
-              try {
-                const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
-                audio.volume = 0.2;
-                audio.play();
-              } catch(e) {}
-            } else {
-              showSendStatus('❌ Error: ' + message, 'error');
-              updateText('❌ Error submitting attendance');
-            }
+        // Send to submitAttendance
+        sendToAttendance(lrn, finalEmail, studentName, today, status, function(success, message, alreadyAttended) {
+          if (alreadyAttended) {
+            showScannedResult(studentName, lrn, finalEmail, status, 'Already Scanned', true, false);
+            addToLog(studentName, lrn, 'Duplicate', new Date().toLocaleTimeString());
+            updateText('⚠️ ' + studentName + ' already scanned today');
+            showSendStatus('⚠️ Already scanned today', 'warning');
+          } else if (success) {
+            scanCount++;
+            updateScanCount();
             
-            setTimeout(() => {
-              isProcessing = false;
-            }, 1000);
-          });
+            showScannedResult(studentName, lrn, finalEmail, status, statusDisplay, false, true);
+            addToLog(studentName, lrn, 'Sent', new Date().toLocaleTimeString());
+            updateText('✅ ' + studentName + ' - Sent to Attendance');
+            showSendStatus('✅ Attendance submitted successfully!', 'success');
+            
+            // Play success sound
+            try {
+              const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
+              audio.volume = 0.2;
+              audio.play();
+            } catch(e) {}
+            
+            // Clear result after 3 seconds to prepare for next scan
+            setTimeout(function() {
+              if (!isProcessing) {
+                // Keep the last result visible but ready for next scan
+              }
+            }, 3000);
+          } else {
+            showSendStatus('❌ Error: ' + message, 'error');
+            updateText('❌ Error submitting attendance');
+          }
+          
+          setTimeout(() => {
+            isProcessing = false;
+          }, 1500);
         });
       });
     }
@@ -692,7 +682,7 @@
     }
 
     // ========================================
-    // MANUAL LRN SUBMISSION (Fallback)
+    // MANUAL LRN SUBMISSION
     // ========================================
     function submitManualLRN() {
       const lrn = manualLRN.value.trim();
@@ -710,13 +700,18 @@
         const studentName = name || 'Student';
         const studentEmail = email || 'manual@student.ph';
         
-        sendToAttendance(lrn, studentEmail, studentName, today, 'P', function(success, message) {
-          if (success) {
+        sendToAttendance(lrn, studentEmail, studentName, today, 'P', function(success, message, alreadyAttended) {
+          if (alreadyAttended) {
+            showScannedResult(studentName, lrn, studentEmail, 'P', 'Already Scanned', true, false);
+            addToLog(studentName, lrn, 'Duplicate', new Date().toLocaleTimeString());
+            updateText('⚠️ ' + studentName + ' already scanned today');
+            showSendStatus('⚠️ Already scanned today', 'warning');
+          } else if (success) {
             scanCount++;
             updateScanCount();
             showScannedResult(studentName, lrn, studentEmail, 'P', 'Manual Entry', false, true);
             addToLog(studentName, lrn, 'Sent', new Date().toLocaleTimeString());
-            updateText(`✅ ${studentName} - Manual entry submitted`);
+            updateText('✅ ' + studentName + ' - Manual entry submitted');
             showSendStatus('✅ Attendance submitted successfully!', 'success');
             manualLRN.value = '';
           } else {
@@ -742,19 +737,8 @@
     // API FUNCTIONS
     // ========================================
     
-    function checkTodayAttendance(lrn, date, callback) {
-      fetch(`${WEB_APP_URL}?action=checkAttendance&lrn=${lrn}&date=${date}`)
-        .then(response => response.json())
-        .then(data => {
-          callback(data.attended || false);
-        })
-        .catch(() => {
-          callback(false);
-        });
-    }
-
     function lookupStudent(lrn, callback) {
-      fetch(`${WEB_APP_URL}?action=getStudent&lrn=${lrn}`)
+      fetch(WEB_APP_URL + '?action=getStudent&lrn=' + lrn)
         .then(response => response.json())
         .then(data => {
           if (data && data.name) {
@@ -763,7 +747,7 @@
             callback('Student', '');
           }
         })
-        .catch(() => {
+        .catch(function() {
           callback('Student', '');
         });
     }
@@ -789,14 +773,16 @@
       .then(response => response.json())
       .then(result => {
         if (result.success) {
-          callback(true, result.message || 'Attendance recorded successfully.');
+          callback(true, result.message || 'Attendance recorded successfully.', false);
+        } else if (result.alreadyAttended) {
+          callback(false, 'Already attended today.', true);
         } else {
-          callback(false, result.message || 'Failed to record attendance.');
+          callback(false, result.message || 'Failed to record attendance.', false);
         }
       })
-      .catch(error => {
+      .catch(function(error) {
         console.error('Error sending to attendance:', error);
-        callback(true, 'Attendance recorded (local).');
+        callback(true, 'Attendance recorded (local).', false);
       });
     }
 
@@ -804,7 +790,6 @@
     // START ON PAGE LOAD
     // ========================================
     window.addEventListener('DOMContentLoaded', function() {
-      // Auto-start after a short delay
       setTimeout(autoStartScanner, 500);
     });
 
