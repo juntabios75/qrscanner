@@ -93,18 +93,6 @@
       margin-bottom: 8px;
       animation: slideIn 0.3s ease;
     }
-    .scanned-result.late {
-      background: #fff3cd;
-      border-left-color: #f39c12;
-    }
-    .scanned-result.duplicate {
-      background: #f8d7da;
-      border-left-color: #dc3545;
-    }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
     .scanned-result .info-row {
       display: flex;
       justify-content: space-between;
@@ -115,19 +103,6 @@
     .scanned-result .info-row:last-child { border-bottom: none; }
     .scanned-result .label { font-weight: 600; color: #2c3e50; }
     .scanned-result .value { color: #155724; font-weight: 500; }
-    .scanned-result.late .value { color: #856404; }
-    .scanned-result.duplicate .value { color: #721c24; }
-    .scanned-result .status-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-    .status-badge.present { background: #28a745; color: white; }
-    .status-badge.late { background: #f39c12; color: white; }
-    .status-badge.duplicate { background: #dc3545; color: white; }
-    .status-badge.sent { background: #6c5ce7; color: white; }
     
     .hidden { display: none !important; }
     
@@ -152,30 +127,6 @@
       margin-right: 6px;
     }
     
-    .log-container {
-      max-height: 150px;
-      overflow-y: auto;
-      margin-top: 8px;
-      border-top: 1px solid #e9ecef;
-      padding-top: 8px;
-    }
-    .log-item {
-      font-size: 12px;
-      padding: 3px 8px;
-      margin: 2px 0;
-      border-radius: 4px;
-      background: #f8f9fa;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .log-item .log-name { font-weight: 500; }
-    .log-item .log-status { font-weight: 600; font-size: 11px; }
-    .log-item .log-status.present { color: #27ae60; }
-    .log-item .log-status.late { color: #f39c12; }
-    .log-item .log-status.duplicate { color: #dc3545; }
-    .log-item .log-status.sent { color: #6c5ce7; }
-    
     .status-text {
       text-align: center;
       font-size: 12px;
@@ -194,7 +145,6 @@
     .send-status.error { background: #f8d7da; color: #721c24; }
     .send-status.sending { background: #d1ecf1; color: #0c5460; }
     
-    /* Manual Entry Section */
     .manual-entry {
       margin-top: 15px;
       padding: 15px;
@@ -202,17 +152,8 @@
       border-radius: 10px;
       border: 1px solid #e9ecef;
     }
-    .manual-entry h4 {
-      font-size: 13px;
-      color: var(--gray);
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    .manual-entry .input-group {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    .manual-entry h4 { font-size: 13px; color: var(--gray); margin-bottom: 10px; text-align: center; }
+    .manual-entry .input-group { display: flex; gap: 8px; flex-wrap: wrap; }
     .manual-entry input {
       flex: 1;
       padding: 8px 12px;
@@ -222,20 +163,13 @@
       font-family: 'Inter', sans-serif;
       min-width: 120px;
     }
-    .manual-entry input:focus {
-      outline: none;
-      border-color: #6c5ce7;
-    }
-    .manual-entry .btn {
-      padding: 8px 16px;
-      font-size: 13px;
-    }
+    .manual-entry input:focus { outline: none; border-color: #6c5ce7; }
+    .manual-entry .btn { padding: 8px 16px; font-size: 13px; }
     
     @media (max-width: 500px) {
       .container { padding: 15px; }
       .btn { width: 100%; justify-content: center; font-size: 13px; }
       .btn-group { flex-direction: column; }
-      .scanned-result .info-row { font-size: 12px; }
       .manual-entry .input-group { flex-direction: column; }
     }
   </style>
@@ -245,8 +179,8 @@
     <div class="header">
       <i class="fas fa-qrcode"></i>
       <h2>QR Attendance Scanner</h2>
-      <p>Scan QR code to auto-fill and submit attendance</p>
-      <span class="badge"><i class="fas fa-sync-alt"></i> Auto-scan & Submit</span>
+      <p>Scan QR code to auto-fill attendance form</p>
+      <span class="badge"><i class="fas fa-sync-alt"></i> Auto-send to form</span>
     </div>
 
     <div id="statusMessage" class="status-box status-info">
@@ -269,7 +203,6 @@
       </button>
     </div>
 
-    <!-- Manual Entry Fallback -->
     <div class="manual-entry">
       <h4><i class="fas fa-keyboard"></i> Or enter LRN manually</h4>
       <div class="input-group">
@@ -284,13 +217,6 @@
       <i class="fas fa-users"></i> Scanned: <span id="scanCount">0</span> students
     </div>
 
-    <div id="logContainer" class="log-container">
-      <div style="font-size: 11px; font-weight: 600; color: var(--gray); margin-bottom: 4px;">
-        <i class="fas fa-list"></i> Recent Scans
-      </div>
-      <div id="logList"></div>
-    </div>
-
     <div class="status-text">
       <span id="statusText">Initializing...</span>
     </div>
@@ -301,15 +227,12 @@
     // ========================================
     // CONFIGURATION
     // ========================================
-    // ⚠️ IMPORTANT: Replace with your actual Google Apps Script Web App URL
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbys-BkQT0jRnPC6q5neSRj6JqmOFG_BKa2luh1uI7gwYjaHRDOYmMCOvBDqbV7V310PrA/exec';
     
     let html5QrCode = null;
     let isScanning = false;
     let scanCount = 0;
     let isProcessing = false;
-    let scannerStarted = false;
-    let cameraStarted = false;
 
     // ========================================
     // DOM REFS
@@ -318,7 +241,6 @@
     const statusText = document.getElementById('statusText');
     const resultDiv = document.getElementById('result');
     const scanCountEl = document.getElementById('scanCount');
-    const logList = document.getElementById('logList');
     const stopBtn = document.getElementById('stopBtn');
     const startBtn = document.getElementById('startBtn');
     const sendStatus = document.getElementById('sendStatus');
@@ -350,68 +272,26 @@
       sendStatus.classList.add('hidden');
     }
 
-    function addToLog(name, lrn, status, time) {
-      const statusMap = {
-        'Present': 'present',
-        'Late': 'late',
-        'Duplicate': 'duplicate',
-        'Sent': 'sent'
-      };
-      const statusClass = statusMap[status] || 'sent';
-      const entry = document.createElement('div');
-      entry.className = 'log-item';
-      entry.innerHTML = `
-        <span class="log-name">${name}</span>
-        <span>
-          <span style="color: #666; font-size: 10px;">${lrn}</span>
-          <span class="log-status ${statusClass}">${status}</span>
-        </span>
-      `;
-      logList.prepend(entry);
-      
-      while (logList.children.length > 30) {
-        logList.removeChild(logList.lastChild);
-      }
-    }
-
-    function showScannedResult(name, lrn, email, status, statusDisplay, isDuplicate, isSent) {
-      let resultClass = 'scanned-result';
-      let badgeClass = 'present';
-      let badgeText = statusDisplay;
-      
-      if (isDuplicate) {
-        resultClass += ' duplicate';
-        badgeClass = 'duplicate';
-      } else if (isSent) {
-        badgeClass = 'sent';
-        badgeText = 'Sent to Attendance';
-      } else if (status === 'L') {
-        resultClass += ' late';
-        badgeClass = 'late';
-      }
-      
+    function showScannedResult(name, lrn, email, status) {
       resultDiv.innerHTML = `
-        <div class="${resultClass}">
+        <div class="scanned-result">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <i class="fas ${isDuplicate ? 'fa-info-circle' : (isSent ? 'fa-paper-plane' : 'fa-check-circle')}" 
-                 style="color: ${isDuplicate ? '#dc3545' : (isSent ? '#6c5ce7' : '#28a745')}; font-size: 16px;"></i>
-              <span style="font-weight: 600; margin-left: 6px; font-size: 14px;">
-                ${isDuplicate ? 'Already Scanned!' : (isSent ? 'Sent to Attendance!' : 'Attendance Recorded!')}
-              </span>
+              <i class="fas fa-check-circle" style="color: #28a745; font-size: 16px;"></i>
+              <span style="font-weight: 600; margin-left: 6px; font-size: 14px;">QR Code detected!</span>
             </div>
-            <span style="font-size: 11px; color: ${isDuplicate ? '#721c24' : (isSent ? '#4a2d8a' : '#155724')};">${new Date().toLocaleTimeString()}</span>
+            <span style="font-size: 11px; color: #155724;">${new Date().toLocaleTimeString()}</span>
           </div>
           <div class="info-row"><span class="label">Name:</span><span class="value">${name}</span></div>
           <div class="info-row"><span class="label">LRN:</span><span class="value">${lrn}</span></div>
           <div class="info-row"><span class="label">Email:</span><span class="value">${email || 'N/A'}</span></div>
-          <div class="info-row"><span class="label">Status:</span><span class="value"><span class="status-badge ${badgeClass}">${badgeText}</span></span></div>
+          <div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;">${status}</span></span></div>
         </div>
       `;
     }
 
     // ========================================
-    // QR SCANNER - MANUAL START
+    // QR SCANNER
     // ========================================
     function startScannerManually() {
       startBtn.classList.add('hidden');
@@ -436,77 +316,54 @@
         return;
       }
 
-      navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "user" } 
-      })
-      .then(function(stream) {
-        stream.getTracks().forEach(track => track.stop());
-        
-        updateStatus('<i class="fas fa-check-circle"></i> Camera ready! <span class="scan-animation"></span> Scanning...', 'success');
-        updateText('🔍 Waiting for QR codes...');
-        cameraStarted = true;
-        
-        initializeScanner('user');
-      })
-      .catch(function(err) {
-        console.error('Camera error (front):', err);
-        
-        navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "environment" } 
-        })
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
         .then(function(stream) {
           stream.getTracks().forEach(track => track.stop());
-          
           updateStatus('<i class="fas fa-check-circle"></i> Camera ready! <span class="scan-animation"></span> Scanning...', 'success');
           updateText('🔍 Waiting for QR codes...');
-          cameraStarted = true;
-          
-          initializeScanner('environment');
+          initializeScanner('user');
         })
-        .catch(function(err2) {
-          console.error('Camera error (back):', err2);
-          
-          let message = '';
-          if (err2.name === 'NotAllowedError' || err2.name === 'PermissionDeniedError') {
-            message = `
-              <i class="fas fa-times-circle"></i> 
-              <strong>Camera access was denied.</strong><br><br>
-              Please allow camera access:<br>
-              1. Click the camera icon in your browser's address bar<br>
-              2. Select "Allow" for camera access<br>
-              3. Click "Start Camera" again<br><br>
-              <button onclick="startScannerManually()" class="btn btn-primary" style="margin-top:8px;padding:8px 20px;font-size:13px;">
-                <i class="fas fa-redo"></i> Try Again
-              </button>
-            `;
-          } else if (err2.name === 'NotFoundError') {
-            message = '<i class="fas fa-exclamation-circle"></i> No camera found on this device.';
-          } else {
-            message = '<i class="fas fa-exclamation-circle"></i> Error: ' + err2.message;
-          }
-          
-          updateStatus(message, 'error');
-          updateText('❌ Camera error');
-          startBtn.classList.remove('hidden');
-          stopBtn.classList.add('hidden');
+        .catch(function(err) {
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) {
+              stream.getTracks().forEach(track => track.stop());
+              updateStatus('<i class="fas fa-check-circle"></i> Camera ready! <span class="scan-animation"></span> Scanning...', 'success');
+              updateText('🔍 Waiting for QR codes...');
+              initializeScanner('environment');
+            })
+            .catch(function(err2) {
+              let message = '';
+              if (err2.name === 'NotAllowedError' || err2.name === 'PermissionDeniedError') {
+                message = `
+                  <i class="fas fa-times-circle"></i> 
+                  <strong>Camera access was denied.</strong><br><br>
+                  Please allow camera access:<br>
+                  1. Click the camera icon in your browser's address bar<br>
+                  2. Select "Allow" for camera access<br>
+                  3. Click "Start Camera" again<br><br>
+                  <button onclick="startScannerManually()" class="btn btn-primary" style="margin-top:8px;padding:8px 20px;font-size:13px;">
+                    <i class="fas fa-redo"></i> Try Again
+                  </button>
+                `;
+              } else if (err2.name === 'NotFoundError') {
+                message = '<i class="fas fa-exclamation-circle"></i> No camera found on this device.';
+              } else {
+                message = '<i class="fas fa-exclamation-circle"></i> Error: ' + err2.message;
+              }
+              updateStatus(message, 'error');
+              updateText('❌ Camera error');
+              startBtn.classList.remove('hidden');
+              stopBtn.classList.add('hidden');
+            });
         });
-      });
     }
 
     function initializeScanner(facingMode) {
-      if (html5QrCode) {
-        html5QrCode.clear();
-        html5QrCode = null;
-      }
+      if (html5QrCode) { html5QrCode.clear(); html5QrCode = null; }
 
       try {
         html5QrCode = new Html5Qrcode("reader");
-
-        const config = {
-          fps: 15,
-          qrbox: { width: 280, height: 280 },
-          aspectRatio: 1.0
-        };
+        const config = { fps: 15, qrbox: { width: 280, height: 280 }, aspectRatio: 1.0 };
 
         html5QrCode.start(
           { facingMode: facingMode || "environment" },
@@ -515,18 +372,15 @@
           onScanError
         ).then(() => {
           isScanning = true;
-          scannerStarted = true;
           updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> Scanning... Point at a QR code.', 'success');
           updateText('🔍 Ready - Scan student QR codes');
           resultDiv.innerHTML = '';
         }).catch(err => {
-          console.error('QR Scanner start error:', err);
           updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start: ' + err.message, 'error');
           updateText('❌ Scanner error');
           stopScanner();
         });
       } catch (err) {
-        console.error('QR Scanner initialization error:', err);
         updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to initialize: ' + err.message, 'error');
         updateText('❌ Initialization error');
         stopScanner();
@@ -534,20 +388,17 @@
     }
 
     function autoStartScanner() {
-      setTimeout(function() {
-        startScannerManually();
-      }, 500);
+      setTimeout(startScannerManually, 500);
     }
 
     // ========================================
-    // SCAN SUCCESS - SEND TO ATTENDANCE
+    // SCAN SUCCESS - SEND DATA TO PARENT
     // ========================================
     function onScanSuccess(decodedText, decodedResult) {
       if (isProcessing) return;
       isProcessing = true;
       hideSendStatus();
       
-      // Parse the QR data
       let email = '';
       let lrn = '';
       let studentName = 'Student';
@@ -560,10 +411,10 @@
         lrn = decodedText;
       } else {
         resultDiv.innerHTML = `
-          <div style="background: #f8d7da; padding: 12px; border-radius: 10px; border-left: 4px solid #dc3545;">
-            <i class="fas fa-exclamation-circle" style="color: #dc3545; font-size: 16px;"></i>
-            <div style="margin-top: 3px; font-weight: 600; font-size: 13px;">Invalid QR Code</div>
-            <div style="font-size: 11px; color: #721c24;">Please scan a valid attendance QR code.</div>
+          <div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">
+            <i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>
+            <div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid QR Code</div>
+            <div style="font-size:11px;color:#721c24;">Please scan a valid attendance QR code.</div>
           </div>
         `;
         isProcessing = false;
@@ -572,97 +423,82 @@
 
       if (!/^\d{12}$/.test(lrn)) {
         resultDiv.innerHTML = `
-          <div style="background: #f8d7da; padding: 12px; border-radius: 10px; border-left: 4px solid #dc3545;">
-            <i class="fas fa-exclamation-circle" style="color: #dc3545; font-size: 16px;"></i>
-            <div style="margin-top: 3px; font-weight: 600; font-size: 13px;">Invalid LRN</div>
-            <div style="font-size: 11px; color: #721c24;">LRN must be 12 digits: ${lrn}</div>
+          <div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">
+            <i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>
+            <div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid LRN</div>
+            <div style="font-size:11px;color:#721c24;">LRN must be 12 digits: ${lrn}</div>
           </div>
         `;
         isProcessing = false;
         return;
       }
 
-      // Get today's date
       const today = new Date().toISOString().split('T')[0];
-      
-      // Determine attendance status based on time (Philippines time)
       const now = new Date();
       const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-      const hour = phTime.getHours();
-      const minute = phTime.getMinutes();
-      const totalMinutes = hour * 60 + minute;
-      const START_WINDOW = 355; // 5:55 AM
-      const END_WINDOW = 375;   // 6:15 AM
+      const totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
+      const START_WINDOW = 355, END_WINDOW = 375;
       
       let status = 'P';
       let statusDisplay = 'Present (On Time)';
-      
-      if (totalMinutes < START_WINDOW) {
-        status = 'E';
-        statusDisplay = 'Too Early';
-      } else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) {
-        status = 'P';
-        statusDisplay = 'Present (On Time)';
-      } else {
-        status = 'L';
-        statusDisplay = 'Late';
-      }
+      if (totalMinutes < START_WINDOW) { status = 'E'; statusDisplay = 'Too Early'; } 
+      else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) { status = 'P'; statusDisplay = 'Present (On Time)'; } 
+      else { status = 'L'; statusDisplay = 'Late'; }
 
-      // Show sending status
-      showSendStatus('⏳ Sending to attendance...', 'sending');
-      
+      showSendStatus('⏳ Looking up student...', 'sending');
+
       // Look up student name from Info sheet
       lookupStudent(lrn, function(name, studentEmail) {
         studentName = name || 'Student';
         const finalEmail = studentEmail || email;
         
-        // Send to submitAttendance
-        sendToAttendance(lrn, finalEmail, studentName, today, status, function(success, message, alreadyAttended) {
-          if (alreadyAttended) {
-            showScannedResult(studentName, lrn, finalEmail, status, 'Already Scanned', true, false);
-            addToLog(studentName, lrn, 'Duplicate', new Date().toLocaleTimeString());
-            updateText('⚠️ ' + studentName + ' already scanned today');
-            showSendStatus('⚠️ Already scanned today', 'warning');
-          } else if (success) {
+        // Display result
+        showScannedResult(studentName, lrn, finalEmail, statusDisplay);
+        
+        // ========================================
+        // SEND DATA BACK TO PARENT (submitAttendance.html)
+        // ========================================
+        const dataToSend = finalEmail + '|' + lrn;
+        
+        // Try sending to parent window (the submitAttendance.html that opened this)
+        if (window.opener && !window.opener.closed) {
+          try {
+            window.opener.postMessage({
+              type: 'LRN_SCANNED',
+              lrn: dataToSend
+            }, '*');
+            
+            showSendStatus('✅ Data sent to attendance form!', 'success');
+            updateText('✅ Sent to form - auto-submitting...');
+            
+            // Increment scan count
             scanCount++;
             updateScanCount();
             
-            showScannedResult(studentName, lrn, finalEmail, status, statusDisplay, false, true);
-            addToLog(studentName, lrn, 'Sent', new Date().toLocaleTimeString());
-            updateText('✅ ' + studentName + ' - Sent to Attendance');
-            showSendStatus('✅ Attendance submitted successfully!', 'success');
-            
-            // Play success sound
-            try {
-              const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
-              audio.volume = 0.2;
-              audio.play();
-            } catch(e) {}
-            
-            // Clear result after 3 seconds to prepare for next scan
+            // Close scanner after 2 seconds
             setTimeout(function() {
-              if (!isProcessing) {
-                // Keep the last result visible but ready for next scan
-              }
-            }, 3000);
-          } else {
-            showSendStatus('❌ Error: ' + message, 'error');
-            updateText('❌ Error submitting attendance');
+              window.close();
+            }, 2000);
+            
+          } catch(e) {
+            console.error('Error sending to parent:', e);
+            showSendStatus('⚠️ Could not send to form. Copy the LRN below.', 'warning');
+            copyToClipboard(lrn, finalEmail);
           }
-          
-          setTimeout(() => {
-            isProcessing = false;
-          }, 1500);
-        });
+        } else {
+          // No parent window - copy to clipboard
+          showSendStatus('⚠️ No parent window found. Copy the data below.', 'warning');
+          copyToClipboard(lrn, finalEmail);
+        }
+        
+        setTimeout(() => {
+          isProcessing = false;
+        }, 1500);
       });
     }
 
     function onScanError(errorMessage) {
-      if (errorMessage && (
-        errorMessage.includes('NotFoundError') || 
-        errorMessage.includes('Permission') ||
-        errorMessage.includes('NotAllowed')
-      )) {
+      if (errorMessage && (errorMessage.includes('NotFoundError') || errorMessage.includes('Permission'))) {
         console.warn('QR Scan error:', errorMessage);
       }
     }
@@ -675,9 +511,7 @@
           startBtn.classList.remove('hidden');
           updateStatus('<i class="fas fa-info-circle"></i> Scanner stopped.', 'info');
           updateText('⏹️ Stopped');
-        }).catch(err => {
-          console.error('Stop scanner error:', err);
-        });
+        }).catch(err => console.error('Stop scanner error:', err));
       }
     }
 
@@ -692,43 +526,41 @@
         return;
       }
       
-      const today = new Date().toISOString().split('T')[0];
-      
-      showSendStatus('⏳ Processing...', 'sending');
-      
       lookupStudent(lrn, function(name, email) {
         const studentName = name || 'Student';
         const studentEmail = email || 'manual@student.ph';
+        const dataToSend = studentEmail + '|' + lrn;
         
-        sendToAttendance(lrn, studentEmail, studentName, today, 'P', function(success, message, alreadyAttended) {
-          if (alreadyAttended) {
-            showScannedResult(studentName, lrn, studentEmail, 'P', 'Already Scanned', true, false);
-            addToLog(studentName, lrn, 'Duplicate', new Date().toLocaleTimeString());
-            updateText('⚠️ ' + studentName + ' already scanned today');
-            showSendStatus('⚠️ Already scanned today', 'warning');
-          } else if (success) {
+        showScannedResult(studentName, lrn, studentEmail, 'Manual Entry');
+        
+        if (window.opener && !window.opener.closed) {
+          try {
+            window.opener.postMessage({
+              type: 'LRN_SCANNED',
+              lrn: dataToSend
+            }, '*');
+            
+            showSendStatus('✅ Data sent to attendance form!', 'success');
+            updateText('✅ Sent to form - auto-submitting...');
             scanCount++;
             updateScanCount();
-            showScannedResult(studentName, lrn, studentEmail, 'P', 'Manual Entry', false, true);
-            addToLog(studentName, lrn, 'Sent', new Date().toLocaleTimeString());
-            updateText('✅ ' + studentName + ' - Manual entry submitted');
-            showSendStatus('✅ Attendance submitted successfully!', 'success');
             manualLRN.value = '';
-          } else {
-            showSendStatus('❌ Error: ' + message, 'error');
-            updateText('❌ Error submitting');
+            
+            setTimeout(function() {
+              window.close();
+            }, 2000);
+          } catch(e) {
+            copyToClipboard(lrn, studentEmail);
           }
-        });
+        } else {
+          copyToClipboard(lrn, studentEmail);
+        }
       });
     }
 
-    // Enter key for manual LRN
     manualLRN.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        submitManualLRN();
-      }
+      if (e.key === 'Enter') submitManualLRN();
     });
-    
     manualLRN.addEventListener('input', function(e) {
       this.value = this.value.replace(/[^0-9]/g, '').substring(0, 12);
     });
@@ -736,7 +568,6 @@
     // ========================================
     // API FUNCTIONS
     // ========================================
-    
     function lookupStudent(lrn, callback) {
       fetch(WEB_APP_URL + '?action=getStudent&lrn=' + lrn)
         .then(response => response.json())
@@ -752,37 +583,21 @@
         });
     }
 
-    function sendToAttendance(lrn, email, name, date, status, callback) {
-      const formData = {
-        lrn: lrn,
-        email: email,
-        attendanceDate: date,
-        status: status,
-        name: name,
-        source: 'QR Scanner'
-      };
-
-      fetch(WEB_APP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'markAttendance',
-          ...formData
-        })
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.success) {
-          callback(true, result.message || 'Attendance recorded successfully.', false);
-        } else if (result.alreadyAttended) {
-          callback(false, 'Already attended today.', true);
-        } else {
-          callback(false, result.message || 'Failed to record attendance.', false);
-        }
-      })
-      .catch(function(error) {
-        console.error('Error sending to attendance:', error);
-        callback(true, 'Attendance recorded (local).', false);
+    function copyToClipboard(lrn, email) {
+      const text = email + '|' + lrn;
+      navigator.clipboard.writeText(text).then(() => {
+        resultDiv.innerHTML += `
+          <div style="margin-top:10px;padding:10px;background:#d4edda;border-radius:8px;font-size:13px;">
+            <strong>Copied:</strong> ${text}
+          </div>
+        `;
+        updateText('📋 Copied to clipboard');
+      }).catch(() => {
+        resultDiv.innerHTML += `
+          <div style="margin-top:10px;padding:10px;background:#fff3cd;border-radius:8px;font-size:13px;">
+            <strong>Data:</strong> ${text}
+          </div>
+        `;
       });
     }
 
