@@ -31,22 +31,6 @@
     .header i { font-size: 40px; color: #6c5ce7; margin-bottom: 5px; }
     .header h2 { color: #2c3e50; font-size: 22px; }
     .header p { color: #7f8c8d; font-size: 13px; }
-    .header .badge {
-      display: inline-block;
-      background: #27ae60;
-      color: white;
-      padding: 3px 14px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-      margin-top: 5px;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.7; }
-      100% { opacity: 1; }
-    }
     
     #reader { width: 100%; margin: 0 auto; }
     #reader video { border-radius: 12px; width: 100% !important; }
@@ -69,7 +53,6 @@
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(108,92,231,0.3); }
     .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; }
     .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(231,76,60,0.3); }
-    .btn-success { background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; }
     
     .btn-group { display: flex; gap: 8px; margin-top: 12px; justify-content: center; flex-wrap: wrap; }
     
@@ -109,13 +92,13 @@
     .counter {
       text-align: center;
       font-size: 13px;
-      color: var(--gray);
+      color: #666;
       margin-top: 8px;
       padding: 6px;
       background: #f8f9fa;
       border-radius: 8px;
     }
-    .counter span { font-weight: 700; color: var(--primary); }
+    .counter span { font-weight: 700; color: #6c5ce7; }
     
     .scan-animation {
       display: inline-block;
@@ -145,32 +128,49 @@
     .send-status.error { background: #f8d7da; color: #721c24; }
     .send-status.sending { background: #d1ecf1; color: #0c5460; }
     
-    .manual-entry {
-      margin-top: 15px;
-      padding: 15px;
-      background: #f8f9fa;
-      border-radius: 10px;
-      border: 1px solid #e9ecef;
-    }
-    .manual-entry h4 { font-size: 13px; color: var(--gray); margin-bottom: 10px; text-align: center; }
-    .manual-entry .input-group { display: flex; gap: 8px; flex-wrap: wrap; }
-    .manual-entry input {
-      flex: 1;
-      padding: 8px 12px;
-      border: 2px solid #e9ecef;
+    /* Server Date/Time Display */
+    .server-datetime {
+      background: #f0f2f5;
+      padding: 10px 14px;
       border-radius: 8px;
+      margin: 10px 0;
+      text-align: center;
       font-size: 13px;
-      font-family: 'Inter', sans-serif;
-      min-width: 120px;
+      color: #2c3e50;
+      border: 1px solid #e4e6eb;
     }
-    .manual-entry input:focus { outline: none; border-color: #6c5ce7; }
-    .manual-entry .btn { padding: 8px 16px; font-size: 13px; }
+    .server-datetime i { color: #6c5ce7; margin-right: 6px; }
+    .server-datetime .date { font-weight: 600; }
+    .server-datetime .time { font-weight: 600; color: #6c5ce7; }
+    
+    /* Attendance Status Badge */
+    .attendance-status {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .attendance-status.on-time { background: #d4edda; color: #155724; }
+    .attendance-status.late { background: #fff3cd; color: #856404; }
+    .attendance-status.early { background: #d1ecf1; color: #0c5460; }
+    
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1); }
+    }
     
     @media (max-width: 500px) {
       .container { padding: 15px; }
       .btn { width: 100%; justify-content: center; font-size: 13px; }
       .btn-group { flex-direction: column; }
-      .manual-entry .input-group { flex-direction: column; }
     }
   </style>
 </head>
@@ -180,7 +180,17 @@
       <i class="fas fa-qrcode"></i>
       <h2>QR Attendance Scanner</h2>
       <p>Scan QR code to auto-fill attendance form</p>
-      <span class="badge"><i class="fas fa-sync-alt"></i> Auto-send & Stay Open</span>
+    </div>
+
+    <!-- Server Date/Time Display -->
+    <div class="server-datetime" id="serverDateTime">
+      <i class="fas fa-calendar-day"></i>
+      <span class="date" id="serverDate">Loading date...</span>
+      <span style="margin: 0 6px;">|</span>
+      <i class="fas fa-clock"></i>
+      <span class="time" id="serverTime">Loading time...</span>
+      <br>
+      <span class="attendance-status on-time" id="attendanceStatus">✓ On Time</span>
     </div>
 
     <div id="statusMessage" class="status-box status-info">
@@ -203,16 +213,6 @@
       </button>
     </div>
 
-    <div class="manual-entry">
-      <h4><i class="fas fa-keyboard"></i> Or enter LRN manually</h4>
-      <div class="input-group">
-        <input type="text" id="manualLRN" maxlength="12" placeholder="Enter 12-digit LRN">
-        <button class="btn btn-success" onclick="submitManualLRN()">
-          <i class="fas fa-check"></i> Submit
-        </button>
-      </div>
-    </div>
-
     <div class="counter">
       <i class="fas fa-users"></i> Scanned: <span id="scanCount">0</span> students
     </div>
@@ -225,14 +225,20 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
     // ========================================
-    // CONFIGURATION
+    // CONFIGURATION - DYNAMIC WEB APP URL
     // ========================================
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbys-BkQT0jRnPC6q5neSRj6JqmOFG_BKa2luh1uI7gwYjaHRDOYmMCOvBDqbV7V310PrA/exec';
+    // ⚠️ IMPORTANT: Update this with your Google Apps Script Web App URL
+    const SCRIPT_ID = 'AKfycbys-BkQT0jRnPC6q5neSRj6JqmOFG_BKa2luh1uI7gwYjaHRDOYmMCOvBDqbV7V310PrA';
+    
+    function getWebAppUrl() {
+      return 'https://script.google.com/macros/s/' + SCRIPT_ID + '/exec';
+    }
     
     let html5QrCode = null;
     let isScanning = false;
     let scanCount = 0;
     let isProcessing = false;
+    let serverDateTime = {};
 
     // ========================================
     // DOM REFS
@@ -244,7 +250,103 @@
     const stopBtn = document.getElementById('stopBtn');
     const startBtn = document.getElementById('startBtn');
     const sendStatus = document.getElementById('sendStatus');
-    const manualLRN = document.getElementById('manualLRN');
+    const serverDateEl = document.getElementById('serverDate');
+    const serverTimeEl = document.getElementById('serverTime');
+    const attendanceStatusEl = document.getElementById('attendanceStatus');
+
+    // ========================================
+    // SERVER DATE/TIME FUNCTIONS
+    // ========================================
+    function loadServerDateTime() {
+      const url = getWebAppUrl() + '?action=getServerDateTime';
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          serverDateTime = data;
+          updateServerDisplay(data);
+        })
+        .catch(function() {
+          // Fallback to client-side time
+          const now = new Date();
+          const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+          const dateStr = phTime.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+          const timeStr = phTime.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          });
+          const totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
+          const status = getAttendanceStatus(totalMinutes);
+          updateServerDisplay({
+            date: phTime.toISOString().split('T')[0],
+            time: timeStr,
+            status: status.status,
+            statusMessage: status.message
+          });
+        });
+    }
+
+    function getAttendanceStatus(totalMinutes) {
+      const START_WINDOW = 355; // 5:55 AM
+      const END_WINDOW = 375;   // 6:15 AM
+      
+      if (totalMinutes < START_WINDOW) {
+        return { status: 'EARLY', message: '⏰ Too early! Attendance starts at 5:55 AM.', class: 'early' };
+      } else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) {
+        return { status: 'P', message: '✓ On Time', class: 'on-time' };
+      } else {
+        return { status: 'L', message: '⏰ LATE', class: 'late' };
+      }
+    }
+
+    function updateServerDisplay(data) {
+      // Format date
+      let dateDisplay = data.date;
+      try {
+        const dateObj = new Date(data.date + 'T00:00:00');
+        dateDisplay = dateObj.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'Asia/Manila'
+        });
+      } catch(e) {}
+      
+      serverDateEl.textContent = dateDisplay;
+      serverTimeEl.textContent = data.time || data.timeFormatted || '--:--';
+      
+      // Update attendance status
+      let statusClass = 'on-time';
+      let statusText = '✓ On Time';
+      let statusIcon = '✅';
+      
+      if (data.status === 'EARLY') {
+        statusClass = 'early';
+        statusText = '⏰ Too Early';
+        statusIcon = '⏰';
+      } else if (data.status === 'L') {
+        statusClass = 'late';
+        statusText = '⏰ LATE';
+        statusIcon = '⏰';
+      } else {
+        statusClass = 'on-time';
+        statusText = '✓ On Time';
+        statusIcon = '✅';
+      }
+      
+      attendanceStatusEl.className = 'attendance-status ' + statusClass;
+      attendanceStatusEl.textContent = statusText;
+      
+      // Store status for use in scan
+      serverDateTime = data;
+    }
 
     // ========================================
     // UTILITY FUNCTIONS
@@ -272,7 +374,7 @@
       sendStatus.classList.add('hidden');
     }
 
-    function showScannedResult(name, lrn, email, status) {
+    function showScannedResult(name, lrn, email, statusDisplay) {
       resultDiv.innerHTML = `
         <div class="scanned-result">
           <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -285,7 +387,7 @@
           <div class="info-row"><span class="label">Name:</span><span class="value">${name}</span></div>
           <div class="info-row"><span class="label">LRN:</span><span class="value">${lrn}</span></div>
           <div class="info-row"><span class="label">Email:</span><span class="value">${email || 'N/A'}</span></div>
-          <div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;">${status}</span></span></div>
+          <div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;">${statusDisplay}</span></span></div>
         </div>
       `;
     }
@@ -441,17 +543,35 @@
         return;
       }
 
+      // Get today's date
       const today = new Date().toISOString().split('T')[0];
-      const now = new Date();
-      const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-      const totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
-      const START_WINDOW = 355, END_WINDOW = 375;
       
+      // Determine attendance status based on server time or fallback
       let status = 'P';
       let statusDisplay = 'Present (On Time)';
-      if (totalMinutes < START_WINDOW) { status = 'E'; statusDisplay = 'Too Early'; } 
-      else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) { status = 'P'; statusDisplay = 'Present (On Time)'; } 
-      else { status = 'L'; statusDisplay = 'Late'; }
+      
+      if (serverDateTime && serverDateTime.status) {
+        if (serverDateTime.status === 'EARLY') {
+          status = 'E';
+          statusDisplay = 'Too Early';
+        } else if (serverDateTime.status === 'L') {
+          status = 'L';
+          statusDisplay = 'Late';
+        } else {
+          status = 'P';
+          statusDisplay = 'Present (On Time)';
+        }
+      } else {
+        // Fallback to client time
+        const now = new Date();
+        const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+        const totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
+        const START_WINDOW = 355, END_WINDOW = 375;
+        
+        if (totalMinutes < START_WINDOW) { status = 'E'; statusDisplay = 'Too Early'; } 
+        else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) { status = 'P'; statusDisplay = 'Present (On Time)'; } 
+        else { status = 'L'; statusDisplay = 'Late'; }
+      }
 
       showSendStatus('⏳ Looking up student...', 'sending');
 
@@ -487,13 +607,10 @@
             // RESET FOR NEXT STUDENT - STAY OPEN
             // ========================================
             setTimeout(function() {
-              // Show ready message
               showReadyMessage();
               updateText('🔍 Ready for next student');
               hideSendStatus();
               isProcessing = false;
-              
-              // The scanner stays running - no close!
             }, 2000);
             
           } catch(e) {
@@ -534,62 +651,22 @@
     }
 
     // ========================================
-    // MANUAL LRN SUBMISSION
-    // ========================================
-    function submitManualLRN() {
-      const lrn = manualLRN.value.trim();
-      
-      if (!/^\d{12}$/.test(lrn)) {
-        updateStatus('❌ Please enter a valid 12-digit LRN.', 'error');
-        return;
-      }
-      
-      lookupStudent(lrn, function(name, email) {
-        const studentName = name || 'Student';
-        const studentEmail = email || 'manual@student.ph';
-        const dataToSend = studentEmail + '|' + lrn;
-        
-        showScannedResult(studentName, lrn, studentEmail, 'Manual Entry');
-        
-        if (window.opener && !window.opener.closed) {
-          try {
-            window.opener.postMessage({
-              type: 'LRN_SCANNED',
-              lrn: dataToSend
-            }, '*');
-            
-            showSendStatus('✅ Data sent to attendance form!', 'success');
-            updateText('✅ Sent to form - auto-submitting...');
-            scanCount++;
-            updateScanCount();
-            manualLRN.value = '';
-            
-            setTimeout(function() {
-              showReadyMessage();
-              updateText('🔍 Ready for next student');
-              hideSendStatus();
-            }, 2000);
-          } catch(e) {
-            copyToClipboard(lrn, studentEmail);
-          }
-        } else {
-          copyToClipboard(lrn, studentEmail);
-        }
-      });
-    }
-
-    manualLRN.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') submitManualLRN();
-    });
-    manualLRN.addEventListener('input', function(e) {
-      this.value = this.value.replace(/[^0-9]/g, '').substring(0, 12);
-    });
-
-    // ========================================
     // API FUNCTIONS
     // ========================================
+    function getApiUrl(endpoint, params) {
+      const baseUrl = getWebAppUrl();
+      let url = baseUrl + '?' + endpoint;
+      if (params) {
+        for (const key in params) {
+          url += '&' + key + '=' + encodeURIComponent(params[key]);
+        }
+      }
+      return url;
+    }
+
     function lookupStudent(lrn, callback) {
-      fetch(WEB_APP_URL + '?action=getStudent&lrn=' + lrn)
+      const url = getApiUrl('action=getStudent', { lrn: lrn });
+      fetch(url)
         .then(response => response.json())
         .then(data => {
           if (data && data.name) {
@@ -625,6 +702,11 @@
     // START ON PAGE LOAD
     // ========================================
     window.addEventListener('DOMContentLoaded', function() {
+      // Load server date/time
+      loadServerDateTime();
+      
+      // Log the current Web App URL for debugging
+      console.log('QR Scanner using Web App URL:', getWebAppUrl());
       setTimeout(autoStartScanner, 500);
     });
 
