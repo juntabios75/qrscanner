@@ -40,6 +40,9 @@
       border-radius: 12px;
       overflow: hidden;
       min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     #reader-container video {
       width: 100% !important;
@@ -49,6 +52,35 @@
     #reader-container canvas {
       display: none;
     }
+    
+    #scan-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      border: 3px solid rgba(108, 92, 231, 0.8);
+      border-radius: 12px;
+      box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+      display: none;
+    }
+    #scan-overlay.active {
+      display: block;
+    }
+    #scan-overlay .corner {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: #6c5ce7;
+      border-style: solid;
+      border-width: 0;
+    }
+    #scan-overlay .corner.tl { top: -3px; left: -3px; border-top-width: 4px; border-left-width: 4px; border-radius: 4px 0 0 0; }
+    #scan-overlay .corner.tr { top: -3px; right: -3px; border-top-width: 4px; border-right-width: 4px; border-radius: 0 4px 0 0; }
+    #scan-overlay .corner.bl { bottom: -3px; left: -3px; border-bottom-width: 4px; border-left-width: 4px; border-radius: 0 0 0 4px; }
+    #scan-overlay .corner.br { bottom: -3px; right: -3px; border-bottom-width: 4px; border-right-width: 4px; border-radius: 0 0 4px 0; }
     
     #result { margin-top: 12px; text-align: center; min-height: 40px; max-height: 300px; overflow-y: auto; }
     
@@ -65,19 +97,21 @@
       gap: 8px;
       touch-action: manipulation;
       min-height: 48px;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
     }
     .btn-primary { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(108,92,231,0.3); }
     .btn-primary:active { transform: scale(0.95); }
     .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; }
-    .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(231,76,60,0.3); }
     .btn-danger:active { transform: scale(0.95); }
     .btn-success { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
-    .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(40,167,69,0.3); }
     .btn-success:active { transform: scale(0.95); }
     .btn-secondary { background: #6c757d; color: white; }
-    .btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(108,117,125,0.3); }
     .btn-secondary:active { transform: scale(0.95); }
+    .btn-warning { background: linear-gradient(135deg, #f39c12, #e67e22); color: white; }
+    .btn-warning:active { transform: scale(0.95); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     
     .btn-group { 
       display: flex; 
@@ -86,7 +120,7 @@
       justify-content: center; 
       flex-wrap: wrap; 
     }
-    .btn-group .btn { flex: 1; min-width: 120px; justify-content: center; }
+    .btn-group .btn { flex: 1; min-width: 100px; }
     
     .status-box {
       padding: 10px 14px;
@@ -186,17 +220,50 @@
     .attendance-status.late { background: #fff3cd; color: #856404; }
     .attendance-status.early { background: #d1ecf1; color: #0c5460; }
     
-    .debug-info {
+    .manual-input {
+      margin-top: 12px;
+      padding: 15px;
       background: #f8f9fa;
-      padding: 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      color: #666;
-      margin-top: 8px;
-      word-break: break-all;
+      border-radius: 10px;
       border: 1px solid #e4e6eb;
-      display: none;
     }
+    .manual-input label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #2c3e50;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .manual-input input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #dce0e5;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      margin-bottom: 8px;
+    }
+    .manual-input input:focus {
+      outline: none;
+      border-color: #6c5ce7;
+    }
+    .manual-input .btn-group {
+      margin-top: 0;
+    }
+    .manual-input .btn-group .btn {
+      flex: 1;
+    }
+    
+    .browser-check {
+      background: #fff3cd;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 8px 0;
+      font-size: 12px;
+      color: #856404;
+      border: 1px solid #ffc107;
+    }
+    .browser-check strong { color: #d39e00; }
     
     @keyframes slideIn {
       from { opacity: 0; transform: translateY(-10px); }
@@ -211,9 +278,10 @@
     
     @media (max-width: 500px) {
       .container { padding: 15px; }
-      .btn { width: 100%; justify-content: center; font-size: 14px; }
+      .btn { font-size: 14px; }
       .btn-group { flex-direction: column; }
-      .btn-group .btn { flex: none; }
+      .btn-group .btn { flex: none; width: 100%; }
+      #scan-overlay { width: 150px; height: 150px; }
     }
   </style>
 </head>
@@ -222,7 +290,13 @@
     <div class="header">
       <i class="fas fa-qrcode"></i>
       <h2>QR Attendance Scanner</h2>
-      <p>Scan QR code to auto-fill attendance form</p>
+      <p>Scan QR code or enter LRN manually</p>
+    </div>
+
+    <!-- Browser Compatibility Check -->
+    <div class="browser-check" id="browserCheck">
+      <i class="fas fa-info-circle"></i> 
+      <strong>Device:</strong> <span id="deviceInfo">Checking...</span>
     </div>
 
     <div class="server-datetime" id="serverDateTime">
@@ -241,6 +315,12 @@
 
     <div id="reader-container">
       <div id="reader"></div>
+      <div id="scan-overlay">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+      </div>
     </div>
     
     <div id="result"></div>
@@ -258,6 +338,20 @@
       </button>
     </div>
 
+    <!-- Manual LRN Input (Fallback) -->
+    <div class="manual-input">
+      <label for="manualLRN"><i class="fas fa-keyboard"></i> Manual Entry (if camera not working):</label>
+      <input type="text" id="manualLRN" placeholder="Enter 12-digit LRN" maxlength="12" pattern="[0-9]*" inputmode="numeric">
+      <div class="btn-group">
+        <button class="btn btn-success" id="manualSubmitBtn">
+          <i class="fas fa-check"></i> Submit LRN
+        </button>
+        <button class="btn btn-warning" id="testQRBtn">
+          <i class="fas fa-qrcode"></i> Test QR
+        </button>
+      </div>
+    </div>
+
     <div class="counter">
       <i class="fas fa-users"></i> Scanned: <span id="scanCount">0</span> students
     </div>
@@ -265,90 +359,124 @@
     <div class="status-text">
       <span id="statusText">Ready</span>
     </div>
-    
-    <div class="debug-info" id="debugInfo"></div>
   </div>
 
-  <!-- Load scripts with defer and proper ordering -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+  <!-- Load libraries with proper fallbacks -->
   <script>
+    // ========================================
+    // BROWSER COMPATIBILITY CHECK
+    // ========================================
+    (function checkBrowser() {
+      var deviceInfo = document.getElementById('deviceInfo');
+      var ua = navigator.userAgent;
+      var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(ua);
+      var isOldBrowser = false;
+      var browserName = 'Unknown';
+      
+      // Detect browser
+      if (ua.indexOf('Chrome') > -1) {
+        browserName = 'Chrome';
+        var chromeVersion = parseInt(ua.match(/Chrome\/(\d+)/)[1]);
+        if (chromeVersion < 60) isOldBrowser = true;
+      } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) {
+        browserName = 'Safari';
+        var safariVersion = parseInt(ua.match(/Version\/(\d+)/)[1]);
+        if (safariVersion < 12) isOldBrowser = true;
+      } else if (ua.indexOf('Firefox') > -1) {
+        browserName = 'Firefox';
+        var firefoxVersion = parseInt(ua.match(/Firefox\/(\d+)/)[1]);
+        if (firefoxVersion < 50) isOldBrowser = true;
+      } else if (ua.indexOf('Edge') > -1) {
+        browserName = 'Edge';
+        var edgeVersion = parseInt(ua.match(/Edge\/(\d+)/)[1]);
+        if (edgeVersion < 79) isOldBrowser = true;
+      }
+      
+      deviceInfo.textContent = browserName + (isMobile ? ' (Mobile)' : ' (Desktop)') + 
+                              (isOldBrowser ? ' ⚠️ Older version' : ' ✓ Updated');
+      
+      if (isOldBrowser) {
+        var checkDiv = document.getElementById('browserCheck');
+        checkDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' +
+          '<strong>Note:</strong> Your browser version is older. Camera may not work. Use the manual entry below.';
+        checkDiv.style.background = '#f8d7da';
+        checkDiv.style.color = '#721c24';
+        checkDiv.style.borderColor = '#dc3545';
+      }
+      
+      // Check for HTTPS
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        document.getElementById('browserCheck').innerHTML += 
+          '<br><i class="fas fa-lock"></i> <strong>HTTPS required</strong> for camera access.';
+      }
+    })();
+
     // ========================================
     // CONFIGURATION
     // ========================================
-    const SCRIPT_ID = 'AKfycbys-BkQT0jRnPC6q5neSRj6JqmOFG_BKa2luh1uI7gwYjaHRDOYmMCOvBDqbV7V310PrA';
+    var SCRIPT_ID = 'AKfycbys-BkQT0jRnPC6q5neSRj6JqmOFG_BKa2luh1uI7gwYjaHRDOYmMCOvBDqbV7V310PrA';
     
     function getWebAppUrl() {
       return 'https://script.google.com/macros/s/' + SCRIPT_ID + '/exec';
     }
     
-    let html5QrCode = null;
-    let isScanning = false;
-    let scanCount = 0;
-    let isProcessing = false;
-    let serverDateTime = {};
-    let scannerInitialized = false;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
+    var html5QrCode = null;
+    var isScanning = false;
+    var scanCount = 0;
+    var isProcessing = false;
+    var serverDateTime = {};
+    var scannerInitialized = false;
+    var videoStream = null;
+    var isUsingFallback = false;
 
     // ========================================
     // DOM REFS
     // ========================================
-    const statusMessage = document.getElementById('statusMessage');
-    const statusText = document.getElementById('statusText');
-    const resultDiv = document.getElementById('result');
-    const scanCountEl = document.getElementById('scanCount');
-    const stopBtn = document.getElementById('stopBtn');
-    const startBtn = document.getElementById('startBtn');
-    const sendStatus = document.getElementById('sendStatus');
-    const serverDateEl = document.getElementById('serverDate');
-    const serverTimeEl = document.getElementById('serverTime');
-    const attendanceStatusEl = document.getElementById('attendanceStatus');
-    const debugInfo = document.getElementById('debugInfo');
-    const readerContainer = document.getElementById('reader-container');
-
-    // ========================================
-    // DEBUG FUNCTION
-    // ========================================
-    function debugLog(message) {
-      console.log('[QR Scanner Debug]', message);
-      debugInfo.style.display = 'block';
-      debugInfo.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
-      // Keep only last 5 messages
-      const lines = debugInfo.innerHTML.split('<br>');
-      if (lines.length > 10) {
-        debugInfo.innerHTML = lines.slice(-10).join('<br>');
-      }
-    }
+    var statusMessage = document.getElementById('statusMessage');
+    var statusText = document.getElementById('statusText');
+    var resultDiv = document.getElementById('result');
+    var scanCountEl = document.getElementById('scanCount');
+    var stopBtn = document.getElementById('stopBtn');
+    var startBtn = document.getElementById('startBtn');
+    var sendStatus = document.getElementById('sendStatus');
+    var serverDateEl = document.getElementById('serverDate');
+    var serverTimeEl = document.getElementById('serverTime');
+    var attendanceStatusEl = document.getElementById('attendanceStatus');
+    var readerContainer = document.getElementById('reader-container');
+    var scanOverlay = document.getElementById('scan-overlay');
+    var manualLRN = document.getElementById('manualLRN');
+    var manualSubmitBtn = document.getElementById('manualSubmitBtn');
+    var testQRBtn = document.getElementById('testQRBtn');
 
     // ========================================
     // SERVER DATE/TIME FUNCTIONS
     // ========================================
     function loadServerDateTime() {
-      const url = getWebAppUrl() + '?action=getServerDateTime';
+      var url = getWebAppUrl() + '?action=getServerDateTime';
       fetch(url)
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
           serverDateTime = data;
           updateServerDisplay(data);
         })
         .catch(function() {
           // Fallback to client-side time
-          const now = new Date();
-          const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-          const dateStr = phTime.toLocaleDateString('en-US', {
+          var now = new Date();
+          var phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+          var dateStr = phTime.toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric'
           });
-          const timeStr = phTime.toLocaleTimeString('en-US', {
+          var timeStr = phTime.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
             hour12: true
           });
-          const totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
-          const status = getAttendanceStatus(totalMinutes);
+          var totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
+          var status = getAttendanceStatus(totalMinutes);
           updateServerDisplay({
             date: phTime.toISOString().split('T')[0],
             time: timeStr,
@@ -359,11 +487,11 @@
     }
 
     function getAttendanceStatus(totalMinutes) {
-      const START_WINDOW = 355; // 5:55 AM
-      const END_WINDOW = 375;   // 6:15 AM
+      var START_WINDOW = 355;
+      var END_WINDOW = 375;
       
       if (totalMinutes < START_WINDOW) {
-        return { status: 'EARLY', message: '⏰ Too early! Attendance starts at 5:55 AM.', class: 'early' };
+        return { status: 'EARLY', message: '⏰ Too early!', class: 'early' };
       } else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) {
         return { status: 'P', message: '✓ On Time', class: 'on-time' };
       } else {
@@ -372,9 +500,9 @@
     }
 
     function updateServerDisplay(data) {
-      let dateDisplay = data.date;
+      var dateDisplay = data.date;
       try {
-        const dateObj = new Date(data.date + 'T00:00:00');
+        var dateObj = new Date(data.date + 'T00:00:00');
         dateDisplay = dateObj.toLocaleDateString('en-US', {
           weekday: 'long',
           year: 'numeric',
@@ -387,22 +515,22 @@
       serverDateEl.textContent = dateDisplay;
       serverTimeEl.textContent = data.time || data.timeFormatted || '--:--';
       
-      let statusClass = 'on-time';
-      let statusText = '✓ On Time';
+      var statusClass = 'on-time';
+      var statusTextVal = '✓ On Time';
       
       if (data.status === 'EARLY') {
         statusClass = 'early';
-        statusText = '⏰ Too Early';
+        statusTextVal = '⏰ Too Early';
       } else if (data.status === 'L') {
         statusClass = 'late';
-        statusText = '⏰ LATE';
+        statusTextVal = '⏰ LATE';
       } else {
         statusClass = 'on-time';
-        statusText = '✓ On Time';
+        statusTextVal = '✓ On Time';
       }
       
       attendanceStatusEl.className = 'attendance-status ' + statusClass;
-      attendanceStatusEl.textContent = statusText;
+      attendanceStatusEl.textContent = statusTextVal;
       
       serverDateTime = data;
     }
@@ -434,219 +562,231 @@
     }
 
     function showScannedResult(name, lrn, email, statusDisplay) {
-      resultDiv.innerHTML = `
-        <div class="scanned-result">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <i class="fas fa-check-circle" style="color: #28a745; font-size: 16px;"></i>
-              <span style="font-weight: 600; margin-left: 6px; font-size: 14px;">QR Code detected!</span>
-            </div>
-            <span style="font-size: 11px; color: #155724;">${new Date().toLocaleTimeString()}</span>
-          </div>
-          <div class="info-row"><span class="label">Name:</span><span class="value">${name}</span></div>
-          <div class="info-row"><span class="label">LRN:</span><span class="value">${lrn}</span></div>
-          <div class="info-row"><span class="label">Email:</span><span class="value">${email || 'N/A'}</span></div>
-          <div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;">${statusDisplay}</span></span></div>
-        </div>
-      `;
+      resultDiv.innerHTML = 
+        '<div class="scanned-result">' +
+          '<div style="display: flex; justify-content: space-between; align-items: center;">' +
+            '<div>' +
+              '<i class="fas fa-check-circle" style="color: #28a745; font-size: 16px;"></i>' +
+              '<span style="font-weight: 600; margin-left: 6px; font-size: 14px;">QR Code detected!</span>' +
+            '</div>' +
+            '<span style="font-size: 11px; color: #155724;">' + new Date().toLocaleTimeString() + '</span>' +
+          '</div>' +
+          '<div class="info-row"><span class="label">Name:</span><span class="value">' + name + '</span></div>' +
+          '<div class="info-row"><span class="label">LRN:</span><span class="value">' + lrn + '</span></div>' +
+          '<div class="info-row"><span class="label">Email:</span><span class="value">' + (email || 'N/A') + '</span></div>' +
+          '<div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;">' + statusDisplay + '</span></span></div>' +
+        '</div>';
     }
 
     function showReadyMessage() {
-      resultDiv.innerHTML = `
-        <div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">
-          <i class="fas fa-camera"></i> Ready for next student. Scan another QR code.
-        </div>
-      `;
+      resultDiv.innerHTML = 
+        '<div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">' +
+          '<i class="fas fa-camera"></i> Ready for next student. Scan another QR code.' +
+        '</div>';
     }
 
     // ========================================
-    // QR SCANNER - FIXED VERSION
+    // QR SCANNER - FALLBACK COMPATIBLE VERSION
     // ========================================
     function startScannerManually() {
-      debugLog('Start scanner manually called');
-      
-      // Check if we're in a secure context
-      if (!window.isSecureContext) {
-        debugLog('Not in secure context (HTTPS)');
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera requires HTTPS.', 'error');
-        updateText('❌ HTTPS required');
-        return;
+      // Check if we can use the HTML5 QR library
+      if (typeof Html5Qrcode !== 'undefined') {
+        // Use the modern library
+        startModernScanner();
+      } else {
+        // Use fallback approach
+        startFallbackScanner();
       }
+    }
 
-      // Check if camera is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        debugLog('Camera not supported in this browser');
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported.', 'error');
-        updateText('❌ Not supported');
-        return;
+    function startModernScanner() {
+      if (html5QrCode) {
+        try {
+          html5QrCode.stop().then(function() {
+            html5QrCode.clear();
+            html5QrCode = null;
+          }).catch(function() { html5QrCode = null; });
+        } catch(e) { html5QrCode = null; }
       }
 
       startBtn.disabled = true;
       startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
-      
-      // Try to initialize with environment camera first (back camera)
-      initializeScannerWithRetry('environment');
-    }
-
-    function initializeScannerWithRetry(facingMode, retryCount = 0) {
-      debugLog(`Initializing scanner with facingMode: ${facingMode}, retry: ${retryCount}`);
-      
-      // Clean up any existing scanner
-      if (html5QrCode) {
-        try {
-          html5QrCode.stop().then(() => {
-            html5QrCode.clear();
-            html5QrCode = null;
-            debugLog('Previous scanner stopped and cleared');
-          }).catch(() => {
-            html5QrCode = null;
-          });
-        } catch(e) {
-          html5QrCode = null;
-        }
-      }
-
-      // Wait for the library to be loaded
-      if (typeof Html5Qrcode === 'undefined') {
-        debugLog('Html5Qrcode not loaded yet, waiting...');
-        if (retryCount < 10) {
-          setTimeout(() => {
-            initializeScannerWithRetry(facingMode, retryCount + 1);
-          }, 500);
-          return;
-        } else {
-          debugLog('Html5Qrcode failed to load after retries');
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Scanner library failed to load. Please refresh and try again.', 'error');
-          updateText('❌ Library load error');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
-          return;
-        }
-      }
 
       try {
-        // Create scanner instance
-        const readerElement = document.getElementById('reader');
-        if (!readerElement) {
-          debugLog('Reader element not found');
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Scanner container not found.', 'error');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
-          return;
-        }
-
-        // Clear the reader element
+        var readerElement = document.getElementById('reader');
         readerElement.innerHTML = '';
         
-        // Create new scanner instance
         html5QrCode = new Html5Qrcode("reader");
-        debugLog('Html5Qrcode instance created successfully');
+        scanOverlay.classList.add('active');
         
-        const config = {
-          fps: 15,
+        var config = {
+          fps: 10,
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+          aspectRatio: 1.0
         };
 
-        // Start scanning
         html5QrCode.start(
-          { facingMode: facingMode || "environment" },
+          { facingMode: "environment" },
           config,
           onScanSuccess,
           onScanError
-        ).then(() => {
+        ).then(function() {
           isScanning = true;
           scannerInitialized = true;
-          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> Scanning... Point at a QR code.', 'success');
+          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> Scanning...', 'success');
           updateText('🔍 Ready - Scan student QR codes');
-          resultDiv.innerHTML = '';
           startBtn.classList.add('hidden');
           stopBtn.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
-          debugLog('Scanner started successfully');
-        }).catch(err => {
-          debugLog('Failed to start scanner: ' + err.message);
-          // If environment fails, try user facing
-          if (facingMode === 'environment') {
-            debugLog('Trying user-facing camera...');
-            initializeScannerWithRetry('user', 0);
-          } else {
-            updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start camera: ' + err.message, 'error');
-            updateText('❌ Scanner error');
-            startBtn.disabled = false;
-            startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
-            startBtn.classList.remove('hidden');
-            stopBtn.classList.add('hidden');
-          }
+          isUsingFallback = false;
+        }).catch(function(err) {
+          console.warn('Modern scanner failed, trying fallback:', err.message);
+          startFallbackScanner();
         });
       } catch (err) {
-        debugLog('Error creating scanner: ' + err.message);
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to initialize: ' + err.message, 'error');
-        updateText('❌ Initialization error');
-        startBtn.disabled = false;
-        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
-        startBtn.classList.remove('hidden');
-        stopBtn.classList.add('hidden');
+        console.warn('Modern scanner error, using fallback:', err.message);
+        startFallbackScanner();
       }
     }
 
-    function autoStartScanner() {
-      debugLog('Auto-start scanner called');
-      setTimeout(startScannerManually, 800);
+    // ========================================
+    // FALLBACK SCANNER - WORKS ON OLDER BROWSERS
+    // ========================================
+    function startFallbackScanner() {
+      isUsingFallback = true;
+      updateStatus('<i class="fas fa-info-circle"></i> Using fallback scanner mode. Please use manual entry.', 'warning');
+      updateText('📝 Use the manual entry below');
+      
+      startBtn.classList.add('hidden');
+      stopBtn.classList.add('hidden');
+      
+      // Try to access camera directly (older method)
+      try {
+        var video = document.createElement('video');
+        video.setAttribute('autoplay', '');
+        video.setAttribute('playsinline', '');
+        video.style.width = '100%';
+        video.style.height = 'auto';
+        
+        var readerEl = document.getElementById('reader');
+        readerEl.innerHTML = '';
+        readerEl.appendChild(video);
+        
+        // Try to get user media
+        if (navigator.getUserMedia) {
+          navigator.getUserMedia(
+            { video: { facingMode: "environment" } },
+            function(stream) {
+              videoStream = stream;
+              video.srcObject = stream;
+              video.play();
+              scanOverlay.classList.add('active');
+              updateStatus('<i class="fas fa-camera"></i> Camera active. Use manual entry for QR scanning.', 'info');
+              updateText('📷 Camera is on - Use manual LRN entry');
+            },
+            function(err) {
+              console.warn('Fallback camera failed:', err.message);
+              updateStatus('<i class="fas fa-exclamation-circle"></i> Camera unavailable. Please use manual entry.', 'error');
+              updateText('📝 Enter LRN manually below');
+              scanOverlay.classList.remove('active');
+            }
+          );
+        } else {
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported. Please use manual entry.', 'error');
+          updateText('📝 Enter LRN manually below');
+          scanOverlay.classList.remove('active');
+        }
+      } catch(e) {
+        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not available. Use manual entry.', 'error');
+        updateText('📝 Enter LRN manually');
+        scanOverlay.classList.remove('active');
+      }
+      
+      startBtn.disabled = false;
+      startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+    }
+
+    function stopScanner() {
+      if (html5QrCode && isScanning) {
+        html5QrCode.stop().then(function() {
+          isScanning = false;
+          scannerInitialized = false;
+          scanOverlay.classList.remove('active');
+          stopBtn.classList.add('hidden');
+          startBtn.classList.remove('hidden');
+          startBtn.disabled = false;
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+          updateStatus('<i class="fas fa-info-circle"></i> Scanner stopped.', 'info');
+          updateText('⏹️ Stopped');
+        }).catch(function() {});
+      } else if (videoStream) {
+        try {
+          videoStream.getTracks().forEach(function(track) { track.stop(); });
+          videoStream = null;
+        } catch(e) {}
+        scanOverlay.classList.remove('active');
+        stopBtn.classList.add('hidden');
+        startBtn.classList.remove('hidden');
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+      } else {
+        stopBtn.classList.add('hidden');
+        startBtn.classList.remove('hidden');
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+      }
     }
 
     // ========================================
-    // SCAN SUCCESS
+    // SCAN SUCCESS HANDLER
     // ========================================
     function onScanSuccess(decodedText, decodedResult) {
-      debugLog('QR Code scanned: ' + decodedText.substring(0, 20) + '...');
-      
+      processScannedData(decodedText);
+    }
+
+    // ========================================
+    // PROCESS SCANNED DATA
+    // ========================================
+    function processScannedData(decodedText) {
       if (isProcessing) return;
       isProcessing = true;
       hideSendStatus();
       
-      let email = '';
-      let lrn = '';
-      let studentName = 'Student';
+      var email = '';
+      var lrn = '';
+      var studentName = 'Student';
       
-      if (decodedText.includes('|')) {
-        const parts = decodedText.split('|');
+      if (decodedText.indexOf('|') > -1) {
+        var parts = decodedText.split('|');
         email = parts[0].trim();
         lrn = parts[1].trim();
       } else if (/^\d{12}$/.test(decodedText)) {
         lrn = decodedText;
       } else {
-        resultDiv.innerHTML = `
-          <div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">
-            <i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>
-            <div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid QR Code</div>
-            <div style="font-size:11px;color:#721c24;">Please scan a valid attendance QR code.</div>
-          </div>
-        `;
+        resultDiv.innerHTML = 
+          '<div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">' +
+            '<i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>' +
+            '<div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid QR Code</div>' +
+            '<div style="font-size:11px;color:#721c24;">Please scan a valid attendance QR code.</div>' +
+          '</div>';
         isProcessing = false;
         return;
       }
 
       if (!/^\d{12}$/.test(lrn)) {
-        resultDiv.innerHTML = `
-          <div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">
-            <i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>
-            <div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid LRN</div>
-            <div style="font-size:11px;color:#721c24;">LRN must be 12 digits: ${lrn}</div>
-          </div>
-        `;
+        resultDiv.innerHTML = 
+          '<div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">' +
+            '<i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>' +
+            '<div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid LRN</div>' +
+            '<div style="font-size:11px;color:#721c24;">LRN must be 12 digits: ' + lrn + '</div>' +
+          '</div>';
         isProcessing = false;
         return;
       }
 
-      // Get today's date
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Determine attendance status
-      let status = 'P';
-      let statusDisplay = 'Present (On Time)';
+      var status = 'P';
+      var statusDisplay = 'Present (On Time)';
       
       if (serverDateTime && serverDateTime.status) {
         if (serverDateTime.status === 'EARLY') {
@@ -655,34 +795,18 @@
         } else if (serverDateTime.status === 'L') {
           status = 'L';
           statusDisplay = 'Late';
-        } else {
-          status = 'P';
-          statusDisplay = 'Present (On Time)';
         }
-      } else {
-        // Fallback to client time
-        const now = new Date();
-        const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-        const totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
-        const START_WINDOW = 355, END_WINDOW = 375;
-        
-        if (totalMinutes < START_WINDOW) { status = 'E'; statusDisplay = 'Too Early'; } 
-        else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) { status = 'P'; statusDisplay = 'Present (On Time)'; } 
-        else { status = 'L'; statusDisplay = 'Late'; }
       }
 
       showSendStatus('⏳ Looking up student...', 'sending');
 
-      // Look up student name
       lookupStudent(lrn, function(name, studentEmail) {
         studentName = name || 'Student';
-        const finalEmail = studentEmail || email;
+        var finalEmail = studentEmail || email;
         
-        // Display result
         showScannedResult(studentName, lrn, finalEmail, statusDisplay);
         
-        // Send data back to parent
-        const dataToSend = finalEmail + '|' + lrn;
+        var dataToSend = finalEmail + '|' + lrn;
         
         if (window.opener && !window.opener.closed) {
           try {
@@ -705,70 +829,71 @@
             }, 2000);
             
           } catch(e) {
-            debugLog('Error sending to parent: ' + e.message);
-            showSendStatus('⚠️ Could not send to form. Copy the LRN below.', 'warning');
+            showSendStatus('⚠️ Could not send to form. Copy the data below.', 'warning');
             copyToClipboard(lrn, finalEmail);
-            setTimeout(function() {
-              isProcessing = false;
-            }, 1500);
+            setTimeout(function() { isProcessing = false; }, 1500);
           }
         } else {
-          showSendStatus('⚠️ No parent window found. Copy the data below.', 'warning');
+          showSendStatus('⚠️ No parent window. Copy the data below.', 'warning');
           copyToClipboard(lrn, finalEmail);
-          setTimeout(function() {
-            isProcessing = false;
-          }, 1500);
+          setTimeout(function() { isProcessing = false; }, 1500);
         }
       });
     }
 
     function onScanError(errorMessage) {
-      // Silent errors - only log if critical
-      if (errorMessage && 
-          (errorMessage.includes('NotFoundError') || 
-           errorMessage.includes('Permission') ||
-           errorMessage.includes('NotAllowedError'))) {
-        debugLog('Scan error (non-critical): ' + errorMessage);
+      // Silent - only log critical errors
+      if (errorMessage && errorMessage.indexOf('NotFoundError') > -1) {
+        // This is normal when scanning
       }
     }
 
-    function stopScanner() {
-      debugLog('Stopping scanner');
-      if (html5QrCode && isScanning) {
-        html5QrCode.stop().then(() => {
-          isScanning = false;
-          scannerInitialized = false;
-          stopBtn.classList.add('hidden');
-          startBtn.classList.remove('hidden');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
-          updateStatus('<i class="fas fa-info-circle"></i> Scanner stopped.', 'info');
-          updateText('⏹️ Stopped');
-          debugLog('Scanner stopped successfully');
-        }).catch(err => {
-          debugLog('Error stopping scanner: ' + err.message);
-          isScanning = false;
-          stopBtn.classList.add('hidden');
-          startBtn.classList.remove('hidden');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
-        });
-      } else {
-        stopBtn.classList.add('hidden');
-        startBtn.classList.remove('hidden');
-        startBtn.disabled = false;
-        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+    // ========================================
+    // MANUAL LRN SUBMISSION
+    // ========================================
+    function submitManualLRN() {
+      var lrn = manualLRN.value.trim();
+      if (!lrn) {
+        updateStatus('<i class="fas fa-exclamation-circle"></i> Please enter an LRN.', 'warning');
+        return;
       }
+      
+      if (!/^\d{12}$/.test(lrn)) {
+        updateStatus('<i class="fas fa-exclamation-circle"></i> LRN must be 12 digits.', 'error');
+        return;
+      }
+      
+      processScannedData(lrn);
+      manualLRN.value = '';
+    }
+
+    // ========================================
+    // TEST QR GENERATION
+    // ========================================
+    function generateTestQR() {
+      var testLRN = '123456789012';
+      var testEmail = 'test@example.com';
+      var testData = testEmail + '|' + testLRN;
+      
+      resultDiv.innerHTML = 
+        '<div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">' +
+          '<i class="fas fa-info-circle"></i> Test QR Data: <strong>' + testData + '</strong><br>' +
+          '<span style="font-size:11px;">Copy this and paste in the LRN field above, or scan with your device.</span>' +
+        '</div>';
+      
+      // Auto-fill the LRN field
+      manualLRN.value = '123456789012';
+      updateStatus('<i class="fas fa-check-circle"></i> Test LRN generated! Click "Submit LRN" to test.', 'success');
     }
 
     // ========================================
     // API FUNCTIONS
     // ========================================
     function getApiUrl(endpoint, params) {
-      const baseUrl = getWebAppUrl();
-      let url = baseUrl + '?' + endpoint;
+      var baseUrl = getWebAppUrl();
+      var url = baseUrl + '?' + endpoint;
       if (params) {
-        for (const key in params) {
+        for (var key in params) {
           url += '&' + key + '=' + encodeURIComponent(params[key]);
         }
       }
@@ -776,10 +901,10 @@
     }
 
     function lookupStudent(lrn, callback) {
-      const url = getApiUrl('action=getStudent', { lrn: lrn });
+      var url = getApiUrl('action=getStudent', { lrn: lrn });
       fetch(url)
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
           if (data && data.name) {
             callback(data.name, data.email);
           } else {
@@ -792,21 +917,28 @@
     }
 
     function copyToClipboard(lrn, email) {
-      const text = email + '|' + lrn;
-      navigator.clipboard.writeText(text).then(() => {
-        resultDiv.innerHTML += `
-          <div style="margin-top:10px;padding:10px;background:#d4edda;border-radius:8px;font-size:13px;">
-            <strong>Copied:</strong> ${text}
-          </div>
-        `;
-        updateText('📋 Copied to clipboard');
-      }).catch(() => {
-        resultDiv.innerHTML += `
-          <div style="margin-top:10px;padding:10px;background:#fff3cd;border-radius:8px;font-size:13px;">
-            <strong>Data:</strong> ${text}
-          </div>
-        `;
-      });
+      var text = email + '|' + lrn;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() {
+          resultDiv.innerHTML += 
+            '<div style="margin-top:10px;padding:10px;background:#d4edda;border-radius:8px;font-size:13px;">' +
+              '<strong>Copied:</strong> ' + text +
+            '</div>';
+          updateText('📋 Copied to clipboard');
+        }).catch(function() {
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      resultDiv.innerHTML += 
+        '<div style="margin-top:10px;padding:10px;background:#fff3cd;border-radius:8px;font-size:13px;">' +
+          '<strong>Data:</strong> ' + text +
+        '</div>';
+      updateText('📋 Copy the data above');
     }
 
     // ========================================
@@ -814,45 +946,42 @@
     // ========================================
     startBtn.addEventListener('click', startScannerManually);
     stopBtn.addEventListener('click', stopScanner);
+    manualSubmitBtn.addEventListener('click', submitManualLRN);
+    testQRBtn.addEventListener('click', generateTestQR);
+
+    manualLRN.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        submitManualLRN();
+      }
+    });
 
     // ========================================
     // START ON PAGE LOAD
     // ========================================
     window.addEventListener('DOMContentLoaded', function() {
-      debugLog('Page loaded - QR Scanner v2');
-      
-      // Load server date/time
       loadServerDateTime();
       
-      // Log the Web App URL
-      debugLog('Web App URL: ' + getWebAppUrl());
+      // Check if HTML5 QR library is available
+      if (typeof Html5Qrcode === 'undefined') {
+        updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Using manual entry mode.', 'warning');
+        updateText('📝 Use the manual entry below');
+        document.getElementById('browserCheck').innerHTML += 
+          '<br><i class="fas fa-download"></i> <strong>Tip:</strong> Refresh the page to load the QR library.';
+      } else {
+        updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start Camera" to begin.', 'info');
+        updateText('📱 Tap Start Camera');
+      }
       
-      // Auto-start after a delay
-      setTimeout(autoStartScanner, 1000);
+      // Auto-start after a delay if library is loaded
+      setTimeout(function() {
+        if (typeof Html5Qrcode !== 'undefined') {
+          startScannerManually();
+        }
+      }, 1500);
     });
 
     window.addEventListener('beforeunload', function() {
       stopScanner();
-    });
-
-    // Handle orientation changes on mobile
-    window.addEventListener('orientationchange', function() {
-      debugLog('Orientation changed, refreshing scanner...');
-      if (isScanning) {
-        stopScanner();
-        setTimeout(startScannerManually, 500);
-      }
-    });
-
-    // Handle visibility change (tab switching)
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden && isScanning) {
-        debugLog('Tab hidden, stopping scanner to save resources');
-        stopScanner();
-      } else if (!document.hidden && !isScanning && scannerInitialized) {
-        debugLog('Tab visible, restarting scanner');
-        setTimeout(startScannerManually, 300);
-      }
     });
   </script>
 </body>
