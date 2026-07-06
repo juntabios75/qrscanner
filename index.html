@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>MBHS - QR Attendance Scanner</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -16,6 +16,7 @@
       justify-content: center;
       align-items: center;
       padding: 20px;
+      touch-action: manipulation;
     }
     .container {
       background: white;
@@ -32,29 +33,60 @@
     .header h2 { color: #2c3e50; font-size: 22px; }
     .header p { color: #7f8c8d; font-size: 13px; }
     
-    #reader { width: 100%; margin: 0 auto; }
-    #reader video { border-radius: 12px; width: 100% !important; }
+    #reader-container {
+      width: 100%;
+      position: relative;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 300px;
+    }
+    #reader-container video {
+      width: 100% !important;
+      height: auto !important;
+      display: block;
+    }
+    #reader-container canvas {
+      display: none;
+    }
     
     #result { margin-top: 12px; text-align: center; min-height: 40px; max-height: 300px; overflow-y: auto; }
     
     .btn {
-      padding: 10px 20px;
+      padding: 12px 20px;
       border: none;
       border-radius: 50px;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      touch-action: manipulation;
+      min-height: 48px;
     }
     .btn-primary { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; }
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(108,92,231,0.3); }
+    .btn-primary:active { transform: scale(0.95); }
     .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; }
     .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(231,76,60,0.3); }
+    .btn-danger:active { transform: scale(0.95); }
+    .btn-success { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+    .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(40,167,69,0.3); }
+    .btn-success:active { transform: scale(0.95); }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(108,117,125,0.3); }
+    .btn-secondary:active { transform: scale(0.95); }
     
-    .btn-group { display: flex; gap: 8px; margin-top: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-group { 
+      display: flex; 
+      gap: 8px; 
+      margin-top: 12px; 
+      justify-content: center; 
+      flex-wrap: wrap; 
+    }
+    .btn-group .btn { flex: 1; min-width: 120px; justify-content: center; }
     
     .status-box {
       padding: 10px 14px;
@@ -128,7 +160,6 @@
     .send-status.error { background: #f8d7da; color: #721c24; }
     .send-status.sending { background: #d1ecf1; color: #0c5460; }
     
-    /* Server Date/Time Display */
     .server-datetime {
       background: #f0f2f5;
       padding: 10px 14px;
@@ -143,7 +174,6 @@
     .server-datetime .date { font-weight: 600; }
     .server-datetime .time { font-weight: 600; color: #6c5ce7; }
     
-    /* Attendance Status Badge */
     .attendance-status {
       display: inline-block;
       padding: 4px 14px;
@@ -155,6 +185,18 @@
     .attendance-status.on-time { background: #d4edda; color: #155724; }
     .attendance-status.late { background: #fff3cd; color: #856404; }
     .attendance-status.early { background: #d1ecf1; color: #0c5460; }
+    
+    .debug-info {
+      background: #f8f9fa;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #666;
+      margin-top: 8px;
+      word-break: break-all;
+      border: 1px solid #e4e6eb;
+      display: none;
+    }
     
     @keyframes slideIn {
       from { opacity: 0; transform: translateY(-10px); }
@@ -169,8 +211,9 @@
     
     @media (max-width: 500px) {
       .container { padding: 15px; }
-      .btn { width: 100%; justify-content: center; font-size: 13px; }
+      .btn { width: 100%; justify-content: center; font-size: 14px; }
       .btn-group { flex-direction: column; }
+      .btn-group .btn { flex: none; }
     }
   </style>
 </head>
@@ -182,7 +225,6 @@
       <p>Scan QR code to auto-fill attendance form</p>
     </div>
 
-    <!-- Server Date/Time Display -->
     <div class="server-datetime" id="serverDateTime">
       <i class="fas fa-calendar-day"></i>
       <span class="date" id="serverDate">Loading date...</span>
@@ -194,21 +236,24 @@
     </div>
 
     <div id="statusMessage" class="status-box status-info">
-      <i class="fas fa-spinner fa-spin"></i> Initializing camera...
+      <i class="fas fa-spinner fa-spin"></i> Initializing...
     </div>
 
-    <div id="reader"></div>
+    <div id="reader-container">
+      <div id="reader"></div>
+    </div>
+    
     <div id="result"></div>
     <div id="sendStatus" class="send-status hidden"></div>
 
     <div class="btn-group">
-      <button class="btn btn-primary" id="startBtn" onclick="startScannerManually()">
+      <button class="btn btn-primary" id="startBtn">
         <i class="fas fa-camera"></i> Start Camera
       </button>
-      <button class="btn btn-danger hidden" id="stopBtn" onclick="stopScanner()">
-        <i class="fas fa-stop"></i> Stop Scanner
+      <button class="btn btn-danger hidden" id="stopBtn">
+        <i class="fas fa-stop"></i> Stop
       </button>
-      <button class="btn btn-danger" onclick="window.close()">
+      <button class="btn btn-secondary" onclick="window.close()">
         <i class="fas fa-times"></i> Close
       </button>
     </div>
@@ -218,16 +263,18 @@
     </div>
 
     <div class="status-text">
-      <span id="statusText">Initializing...</span>
+      <span id="statusText">Ready</span>
     </div>
+    
+    <div class="debug-info" id="debugInfo"></div>
   </div>
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- Load scripts with defer and proper ordering -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
   <script>
     // ========================================
-    // CONFIGURATION - DYNAMIC WEB APP URL
+    // CONFIGURATION
     // ========================================
-    // ⚠️ IMPORTANT: Update this with your Google Apps Script Web App URL
     const SCRIPT_ID = 'AKfycbys-BkQT0jRnPC6q5neSRj6JqmOFG_BKa2luh1uI7gwYjaHRDOYmMCOvBDqbV7V310PrA';
     
     function getWebAppUrl() {
@@ -239,6 +286,9 @@
     let scanCount = 0;
     let isProcessing = false;
     let serverDateTime = {};
+    let scannerInitialized = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
     // ========================================
     // DOM REFS
@@ -253,6 +303,22 @@
     const serverDateEl = document.getElementById('serverDate');
     const serverTimeEl = document.getElementById('serverTime');
     const attendanceStatusEl = document.getElementById('attendanceStatus');
+    const debugInfo = document.getElementById('debugInfo');
+    const readerContainer = document.getElementById('reader-container');
+
+    // ========================================
+    // DEBUG FUNCTION
+    // ========================================
+    function debugLog(message) {
+      console.log('[QR Scanner Debug]', message);
+      debugInfo.style.display = 'block';
+      debugInfo.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+      // Keep only last 5 messages
+      const lines = debugInfo.innerHTML.split('<br>');
+      if (lines.length > 10) {
+        debugInfo.innerHTML = lines.slice(-10).join('<br>');
+      }
+    }
 
     // ========================================
     // SERVER DATE/TIME FUNCTIONS
@@ -306,7 +372,6 @@
     }
 
     function updateServerDisplay(data) {
-      // Format date
       let dateDisplay = data.date;
       try {
         const dateObj = new Date(data.date + 'T00:00:00');
@@ -322,29 +387,23 @@
       serverDateEl.textContent = dateDisplay;
       serverTimeEl.textContent = data.time || data.timeFormatted || '--:--';
       
-      // Update attendance status
       let statusClass = 'on-time';
       let statusText = '✓ On Time';
-      let statusIcon = '✅';
       
       if (data.status === 'EARLY') {
         statusClass = 'early';
         statusText = '⏰ Too Early';
-        statusIcon = '⏰';
       } else if (data.status === 'L') {
         statusClass = 'late';
         statusText = '⏰ LATE';
-        statusIcon = '⏰';
       } else {
         statusClass = 'on-time';
         statusText = '✓ On Time';
-        statusIcon = '✅';
       }
       
       attendanceStatusEl.className = 'attendance-status ' + statusClass;
       attendanceStatusEl.textContent = statusText;
       
-      // Store status for use in scan
       serverDateTime = data;
     }
 
@@ -401,80 +460,96 @@
     }
 
     // ========================================
-    // QR SCANNER
+    // QR SCANNER - FIXED VERSION
     // ========================================
     function startScannerManually() {
-      startBtn.classList.add('hidden');
-      stopBtn.classList.remove('hidden');
+      debugLog('Start scanner manually called');
       
-      updateStatus('<i class="fas fa-spinner fa-spin"></i> Requesting camera access...', 'info');
-      updateText('Requesting camera...');
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported.', 'error');
-        updateText('❌ Not supported');
-        startBtn.classList.remove('hidden');
-        stopBtn.classList.add('hidden');
-        return;
-      }
-
+      // Check if we're in a secure context
       if (!window.isSecureContext) {
+        debugLog('Not in secure context (HTTPS)');
         updateStatus('<i class="fas fa-exclamation-circle"></i> Camera requires HTTPS.', 'error');
         updateText('❌ HTTPS required');
-        startBtn.classList.remove('hidden');
-        stopBtn.classList.add('hidden');
         return;
       }
 
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-        .then(function(stream) {
-          stream.getTracks().forEach(track => track.stop());
-          updateStatus('<i class="fas fa-check-circle"></i> Camera ready! <span class="scan-animation"></span> Scanning...', 'success');
-          updateText('🔍 Waiting for QR codes...');
-          initializeScanner('user');
-        })
-        .catch(function(err) {
-          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(function(stream) {
-              stream.getTracks().forEach(track => track.stop());
-              updateStatus('<i class="fas fa-check-circle"></i> Camera ready! <span class="scan-animation"></span> Scanning...', 'success');
-              updateText('🔍 Waiting for QR codes...');
-              initializeScanner('environment');
-            })
-            .catch(function(err2) {
-              let message = '';
-              if (err2.name === 'NotAllowedError' || err2.name === 'PermissionDeniedError') {
-                message = `
-                  <i class="fas fa-times-circle"></i> 
-                  <strong>Camera access was denied.</strong><br><br>
-                  Please allow camera access:<br>
-                  1. Click the camera icon in your browser's address bar<br>
-                  2. Select "Allow" for camera access<br>
-                  3. Click "Start Camera" again<br><br>
-                  <button onclick="startScannerManually()" class="btn btn-primary" style="margin-top:8px;padding:8px 20px;font-size:13px;">
-                    <i class="fas fa-redo"></i> Try Again
-                  </button>
-                `;
-              } else if (err2.name === 'NotFoundError') {
-                message = '<i class="fas fa-exclamation-circle"></i> No camera found on this device.';
-              } else {
-                message = '<i class="fas fa-exclamation-circle"></i> Error: ' + err2.message;
-              }
-              updateStatus(message, 'error');
-              updateText('❌ Camera error');
-              startBtn.classList.remove('hidden');
-              stopBtn.classList.add('hidden');
-            });
-        });
+      // Check if camera is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        debugLog('Camera not supported in this browser');
+        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported.', 'error');
+        updateText('❌ Not supported');
+        return;
+      }
+
+      startBtn.disabled = true;
+      startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+      
+      // Try to initialize with environment camera first (back camera)
+      initializeScannerWithRetry('environment');
     }
 
-    function initializeScanner(facingMode) {
-      if (html5QrCode) { html5QrCode.clear(); html5QrCode = null; }
+    function initializeScannerWithRetry(facingMode, retryCount = 0) {
+      debugLog(`Initializing scanner with facingMode: ${facingMode}, retry: ${retryCount}`);
+      
+      // Clean up any existing scanner
+      if (html5QrCode) {
+        try {
+          html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            html5QrCode = null;
+            debugLog('Previous scanner stopped and cleared');
+          }).catch(() => {
+            html5QrCode = null;
+          });
+        } catch(e) {
+          html5QrCode = null;
+        }
+      }
+
+      // Wait for the library to be loaded
+      if (typeof Html5Qrcode === 'undefined') {
+        debugLog('Html5Qrcode not loaded yet, waiting...');
+        if (retryCount < 10) {
+          setTimeout(() => {
+            initializeScannerWithRetry(facingMode, retryCount + 1);
+          }, 500);
+          return;
+        } else {
+          debugLog('Html5Qrcode failed to load after retries');
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Scanner library failed to load. Please refresh and try again.', 'error');
+          updateText('❌ Library load error');
+          startBtn.disabled = false;
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+          return;
+        }
+      }
 
       try {
-        html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 15, qrbox: { width: 280, height: 280 }, aspectRatio: 1.0 };
+        // Create scanner instance
+        const readerElement = document.getElementById('reader');
+        if (!readerElement) {
+          debugLog('Reader element not found');
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Scanner container not found.', 'error');
+          startBtn.disabled = false;
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+          return;
+        }
 
+        // Clear the reader element
+        readerElement.innerHTML = '';
+        
+        // Create new scanner instance
+        html5QrCode = new Html5Qrcode("reader");
+        debugLog('Html5Qrcode instance created successfully');
+        
+        const config = {
+          fps: 15,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+          formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+        };
+
+        // Start scanning
         html5QrCode.start(
           { facingMode: facingMode || "environment" },
           config,
@@ -482,29 +557,52 @@
           onScanError
         ).then(() => {
           isScanning = true;
+          scannerInitialized = true;
           updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> Scanning... Point at a QR code.', 'success');
           updateText('🔍 Ready - Scan student QR codes');
           resultDiv.innerHTML = '';
+          startBtn.classList.add('hidden');
+          stopBtn.classList.remove('hidden');
+          startBtn.disabled = false;
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+          debugLog('Scanner started successfully');
         }).catch(err => {
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start: ' + err.message, 'error');
-          updateText('❌ Scanner error');
-          stopScanner();
+          debugLog('Failed to start scanner: ' + err.message);
+          // If environment fails, try user facing
+          if (facingMode === 'environment') {
+            debugLog('Trying user-facing camera...');
+            initializeScannerWithRetry('user', 0);
+          } else {
+            updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start camera: ' + err.message, 'error');
+            updateText('❌ Scanner error');
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+            startBtn.classList.remove('hidden');
+            stopBtn.classList.add('hidden');
+          }
         });
       } catch (err) {
+        debugLog('Error creating scanner: ' + err.message);
         updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to initialize: ' + err.message, 'error');
         updateText('❌ Initialization error');
-        stopScanner();
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
       }
     }
 
     function autoStartScanner() {
-      setTimeout(startScannerManually, 500);
+      debugLog('Auto-start scanner called');
+      setTimeout(startScannerManually, 800);
     }
 
     // ========================================
-    // SCAN SUCCESS - SEND DATA TO PARENT & STAY OPEN
+    // SCAN SUCCESS
     // ========================================
     function onScanSuccess(decodedText, decodedResult) {
+      debugLog('QR Code scanned: ' + decodedText.substring(0, 20) + '...');
+      
       if (isProcessing) return;
       isProcessing = true;
       hideSendStatus();
@@ -546,7 +644,7 @@
       // Get today's date
       const today = new Date().toISOString().split('T')[0];
       
-      // Determine attendance status based on server time or fallback
+      // Determine attendance status
       let status = 'P';
       let statusDisplay = 'Present (On Time)';
       
@@ -575,7 +673,7 @@
 
       showSendStatus('⏳ Looking up student...', 'sending');
 
-      // Look up student name from Info sheet
+      // Look up student name
       lookupStudent(lrn, function(name, studentEmail) {
         studentName = name || 'Student';
         const finalEmail = studentEmail || email;
@@ -583,12 +681,9 @@
         // Display result
         showScannedResult(studentName, lrn, finalEmail, statusDisplay);
         
-        // ========================================
-        // SEND DATA BACK TO PARENT (submitAttendance.html)
-        // ========================================
+        // Send data back to parent
         const dataToSend = finalEmail + '|' + lrn;
         
-        // Try sending to parent window (the submitAttendance.html that opened this)
         if (window.opener && !window.opener.closed) {
           try {
             window.opener.postMessage({
@@ -599,13 +694,9 @@
             showSendStatus('✅ Data sent to attendance form!', 'success');
             updateText('✅ Sent to form - auto-submitting...');
             
-            // Increment scan count
             scanCount++;
             updateScanCount();
             
-            // ========================================
-            // RESET FOR NEXT STUDENT - STAY OPEN
-            // ========================================
             setTimeout(function() {
               showReadyMessage();
               updateText('🔍 Ready for next student');
@@ -614,7 +705,7 @@
             }, 2000);
             
           } catch(e) {
-            console.error('Error sending to parent:', e);
+            debugLog('Error sending to parent: ' + e.message);
             showSendStatus('⚠️ Could not send to form. Copy the LRN below.', 'warning');
             copyToClipboard(lrn, finalEmail);
             setTimeout(function() {
@@ -622,7 +713,6 @@
             }, 1500);
           }
         } else {
-          // No parent window - copy to clipboard
           showSendStatus('⚠️ No parent window found. Copy the data below.', 'warning');
           copyToClipboard(lrn, finalEmail);
           setTimeout(function() {
@@ -633,20 +723,41 @@
     }
 
     function onScanError(errorMessage) {
-      if (errorMessage && (errorMessage.includes('NotFoundError') || errorMessage.includes('Permission'))) {
-        console.warn('QR Scan error:', errorMessage);
+      // Silent errors - only log if critical
+      if (errorMessage && 
+          (errorMessage.includes('NotFoundError') || 
+           errorMessage.includes('Permission') ||
+           errorMessage.includes('NotAllowedError'))) {
+        debugLog('Scan error (non-critical): ' + errorMessage);
       }
     }
 
     function stopScanner() {
+      debugLog('Stopping scanner');
       if (html5QrCode && isScanning) {
         html5QrCode.stop().then(() => {
           isScanning = false;
+          scannerInitialized = false;
           stopBtn.classList.add('hidden');
           startBtn.classList.remove('hidden');
+          startBtn.disabled = false;
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
           updateStatus('<i class="fas fa-info-circle"></i> Scanner stopped.', 'info');
           updateText('⏹️ Stopped');
-        }).catch(err => console.error('Stop scanner error:', err));
+          debugLog('Scanner stopped successfully');
+        }).catch(err => {
+          debugLog('Error stopping scanner: ' + err.message);
+          isScanning = false;
+          stopBtn.classList.add('hidden');
+          startBtn.classList.remove('hidden');
+          startBtn.disabled = false;
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+        });
+      } else {
+        stopBtn.classList.add('hidden');
+        startBtn.classList.remove('hidden');
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
       }
     }
 
@@ -699,19 +810,49 @@
     }
 
     // ========================================
+    // EVENT LISTENERS
+    // ========================================
+    startBtn.addEventListener('click', startScannerManually);
+    stopBtn.addEventListener('click', stopScanner);
+
+    // ========================================
     // START ON PAGE LOAD
     // ========================================
     window.addEventListener('DOMContentLoaded', function() {
+      debugLog('Page loaded - QR Scanner v2');
+      
       // Load server date/time
       loadServerDateTime();
       
-      // Log the current Web App URL for debugging
-      console.log('QR Scanner using Web App URL:', getWebAppUrl());
-      setTimeout(autoStartScanner, 500);
+      // Log the Web App URL
+      debugLog('Web App URL: ' + getWebAppUrl());
+      
+      // Auto-start after a delay
+      setTimeout(autoStartScanner, 1000);
     });
 
     window.addEventListener('beforeunload', function() {
       stopScanner();
+    });
+
+    // Handle orientation changes on mobile
+    window.addEventListener('orientationchange', function() {
+      debugLog('Orientation changed, refreshing scanner...');
+      if (isScanning) {
+        stopScanner();
+        setTimeout(startScannerManually, 500);
+      }
+    });
+
+    // Handle visibility change (tab switching)
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden && isScanning) {
+        debugLog('Tab hidden, stopping scanner to save resources');
+        stopScanner();
+      } else if (!document.hidden && !isScanning && scannerInitialized) {
+        debugLog('Tab visible, restarting scanner');
+        setTimeout(startScannerManually, 300);
+      }
     });
   </script>
 </body>
