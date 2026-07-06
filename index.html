@@ -361,55 +361,31 @@
     </div>
   </div>
 
-  <!-- Load libraries with proper fallbacks -->
   <script>
     // ========================================
-    // BROWSER COMPATIBILITY CHECK
+    // POLYFILLS FOR OLDER BROWSERS
     // ========================================
-    (function checkBrowser() {
-      var deviceInfo = document.getElementById('deviceInfo');
-      var ua = navigator.userAgent;
-      var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(ua);
-      var isOldBrowser = false;
-      var browserName = 'Unknown';
-      
-      // Detect browser
-      if (ua.indexOf('Chrome') > -1) {
-        browserName = 'Chrome';
-        var chromeVersion = parseInt(ua.match(/Chrome\/(\d+)/)[1]);
-        if (chromeVersion < 60) isOldBrowser = true;
-      } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) {
-        browserName = 'Safari';
-        var safariVersion = parseInt(ua.match(/Version\/(\d+)/)[1]);
-        if (safariVersion < 12) isOldBrowser = true;
-      } else if (ua.indexOf('Firefox') > -1) {
-        browserName = 'Firefox';
-        var firefoxVersion = parseInt(ua.match(/Firefox\/(\d+)/)[1]);
-        if (firefoxVersion < 50) isOldBrowser = true;
-      } else if (ua.indexOf('Edge') > -1) {
-        browserName = 'Edge';
-        var edgeVersion = parseInt(ua.match(/Edge\/(\d+)/)[1]);
-        if (edgeVersion < 79) isOldBrowser = true;
-      }
-      
-      deviceInfo.textContent = browserName + (isMobile ? ' (Mobile)' : ' (Desktop)') + 
-                              (isOldBrowser ? ' ⚠️ Older version' : ' ✓ Updated');
-      
-      if (isOldBrowser) {
-        var checkDiv = document.getElementById('browserCheck');
-        checkDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' +
-          '<strong>Note:</strong> Your browser version is older. Camera may not work. Use the manual entry below.';
-        checkDiv.style.background = '#f8d7da';
-        checkDiv.style.color = '#721c24';
-        checkDiv.style.borderColor = '#dc3545';
-      }
-      
-      // Check for HTTPS
-      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-        document.getElementById('browserCheck').innerHTML += 
-          '<br><i class="fas fa-lock"></i> <strong>HTTPS required</strong> for camera access.';
-      }
-    })();
+    // Polyfill for Array.prototype.forEach
+    if (!Array.prototype.forEach) {
+      Array.prototype.forEach = function(callback, thisArg) {
+        for (var i = 0; i < this.length; i++) {
+          callback.call(thisArg, this[i], i, this);
+        }
+      };
+    }
+
+    // Polyfill for Object.keys
+    if (!Object.keys) {
+      Object.keys = function(obj) {
+        var keys = [];
+        for (var key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            keys.push(key);
+          }
+        }
+        return keys;
+      };
+    }
 
     // ========================================
     // CONFIGURATION
@@ -428,6 +404,8 @@
     var scannerInitialized = false;
     var videoStream = null;
     var isUsingFallback = false;
+    var scannerStartAttempts = 0;
+    var maxScannerAttempts = 3;
 
     // ========================================
     // DOM REFS
@@ -449,10 +427,90 @@
     var testQRBtn = document.getElementById('testQRBtn');
 
     // ========================================
+    // BROWSER COMPATIBILITY CHECK
+    // ========================================
+    function checkBrowserCompatibility() {
+      var deviceInfo = document.getElementById('deviceInfo');
+      var ua = navigator.userAgent;
+      var isMobile = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(ua);
+      var browserName = 'Unknown';
+      var isOldBrowser = false;
+      var browserVersion = 0;
+      
+      // Detect browser
+      if (ua.indexOf('Chrome') > -1) {
+        browserName = 'Chrome';
+        var chromeMatch = ua.match(/Chrome\/(\d+)/);
+        if (chromeMatch) {
+          browserVersion = parseInt(chromeMatch[1]);
+          if (browserVersion < 60) isOldBrowser = true;
+        }
+      } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) {
+        browserName = 'Safari';
+        var safariMatch = ua.match(/Version\/(\d+)/);
+        if (safariMatch) {
+          browserVersion = parseInt(safariMatch[1]);
+          if (browserVersion < 12) isOldBrowser = true;
+        }
+      } else if (ua.indexOf('Firefox') > -1) {
+        browserName = 'Firefox';
+        var ffMatch = ua.match(/Firefox\/(\d+)/);
+        if (ffMatch) {
+          browserVersion = parseInt(ffMatch[1]);
+          if (browserVersion < 50) isOldBrowser = true;
+        }
+      } else if (ua.indexOf('Edge') > -1) {
+        browserName = 'Edge';
+        var edgeMatch = ua.match(/Edge\/(\d+)/);
+        if (edgeMatch) {
+          browserVersion = parseInt(edgeMatch[1]);
+          if (browserVersion < 79) isOldBrowser = true;
+        }
+      }
+      
+      var deviceInfoText = browserName;
+      if (browserVersion > 0) {
+        deviceInfoText += ' ' + browserVersion;
+      }
+      deviceInfoText += isMobile ? ' (Mobile)' : ' (Desktop)';
+      
+      if (isOldBrowser) {
+        deviceInfoText += ' ⚠️ Older version - using compatibility mode';
+        var checkDiv = document.getElementById('browserCheck');
+        checkDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' +
+          '<strong>Note:</strong> Your browser version is older. Using compatibility mode. Manual entry is always available.';
+        checkDiv.style.background = '#f8d7da';
+        checkDiv.style.color = '#721c24';
+        checkDiv.style.borderColor = '#dc3545';
+        // Show manual input more prominently
+        document.querySelector('.manual-input').style.borderColor = '#dc3545';
+        document.querySelector('.manual-input').style.borderWidth = '2px';
+      } else {
+        deviceInfoText += ' ✓ Updated';
+      }
+      
+      deviceInfo.textContent = deviceInfoText;
+      
+      // Check for HTTPS
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        document.getElementById('browserCheck').innerHTML += 
+          '<br><i class="fas fa-lock"></i> <strong>HTTPS required</strong> for camera access.';
+      }
+    }
+
+    // ========================================
     // SERVER DATE/TIME FUNCTIONS
     // ========================================
     function loadServerDateTime() {
       var url = getWebAppUrl() + '?action=getServerDateTime';
+      
+      // Check if fetch is available
+      if (typeof fetch !== 'function') {
+        // Fallback to XHR for older browsers
+        loadServerDateTimeXHR();
+        return;
+      }
+      
       fetch(url)
         .then(function(response) { return response.json(); })
         .then(function(data) {
@@ -460,30 +518,52 @@
           updateServerDisplay(data);
         })
         .catch(function() {
-          // Fallback to client-side time
-          var now = new Date();
-          var phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-          var dateStr = phTime.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          });
-          var timeStr = phTime.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-          });
-          var totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
-          var status = getAttendanceStatus(totalMinutes);
-          updateServerDisplay({
-            date: phTime.toISOString().split('T')[0],
-            time: timeStr,
-            status: status.status,
-            statusMessage: status.message
-          });
+          fallbackDateTime();
         });
+    }
+
+    function loadServerDateTimeXHR() {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', getWebAppUrl() + '?action=getServerDateTime', true);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            serverDateTime = data;
+            updateServerDisplay(data);
+          } catch(e) {
+            fallbackDateTime();
+          }
+        } else if (xhr.readyState === 4) {
+          fallbackDateTime();
+        }
+      };
+      xhr.send();
+    }
+
+    function fallbackDateTime() {
+      var now = new Date();
+      var phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+      var dateStr = phTime.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      var timeStr = phTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      var totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
+      var status = getAttendanceStatus(totalMinutes);
+      updateServerDisplay({
+        date: phTime.toISOString().split('T')[0],
+        time: timeStr,
+        status: status.status,
+        statusMessage: status.message
+      });
     }
 
     function getAttendanceStatus(totalMinutes) {
@@ -562,8 +642,7 @@
     }
 
     function showScannedResult(name, lrn, email, statusDisplay) {
-      resultDiv.innerHTML = 
-        '<div class="scanned-result">' +
+      var html = '<div class="scanned-result">' +
           '<div style="display: flex; justify-content: space-between; align-items: center;">' +
             '<div>' +
               '<i class="fas fa-check-circle" style="color: #28a745; font-size: 16px;"></i>' +
@@ -576,30 +655,60 @@
           '<div class="info-row"><span class="label">Email:</span><span class="value">' + (email || 'N/A') + '</span></div>' +
           '<div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;">' + statusDisplay + '</span></span></div>' +
         '</div>';
+      resultDiv.innerHTML = html;
     }
 
     function showReadyMessage() {
-      resultDiv.innerHTML = 
-        '<div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">' +
+      resultDiv.innerHTML = '<div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">' +
           '<i class="fas fa-camera"></i> Ready for next student. Scan another QR code.' +
         '</div>';
     }
 
     // ========================================
-    // QR SCANNER - FALLBACK COMPATIBLE VERSION
+    // QR SCANNER - COMPATIBLE VERSION
     // ========================================
     function startScannerManually() {
-      // Check if we can use the HTML5 QR library
+      scannerStartAttempts++;
+      
+      // Check if Html5Qrcode is available
       if (typeof Html5Qrcode !== 'undefined') {
-        // Use the modern library
         startModernScanner();
       } else {
-        // Use fallback approach
-        startFallbackScanner();
+        // Try to load the library dynamically
+        loadLibraryAndStart();
       }
     }
 
+    function loadLibraryAndStart() {
+      updateStatus('<i class="fas fa-spinner fa-spin"></i> Loading QR library...', 'info');
+      
+      var script = document.createElement('script');
+      script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+      script.onload = function() {
+        updateStatus('<i class="fas fa-check-circle"></i> Library loaded. Starting scanner...', 'success');
+        setTimeout(startModernScanner, 300);
+      };
+      script.onerror = function() {
+        updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to load QR library. Using manual entry.', 'error');
+        showManualEntryMode();
+      };
+      document.head.appendChild(script);
+    }
+
+    function showManualEntryMode() {
+      startBtn.classList.add('hidden');
+      stopBtn.classList.add('hidden');
+      updateStatus('<i class="fas fa-info-circle"></i> Using manual entry mode. Enter LRN below.', 'info');
+      updateText('📝 Enter LRN manually');
+      scanOverlay.classList.remove('active');
+      
+      // Highlight manual input
+      document.querySelector('.manual-input').style.borderColor = '#28a745';
+      document.querySelector('.manual-input').style.borderWidth = '2px';
+    }
+
     function startModernScanner() {
+      // Clean up any existing scanner
       if (html5QrCode) {
         try {
           html5QrCode.stop().then(function() {
@@ -615,6 +724,11 @@
       try {
         var readerElement = document.getElementById('reader');
         readerElement.innerHTML = '';
+        
+        // Check if Html5Qrcode is available
+        if (typeof Html5Qrcode === 'undefined') {
+          throw new Error('Html5Qrcode library not loaded');
+        }
         
         html5QrCode = new Html5Qrcode("reader");
         scanOverlay.classList.add('active');
@@ -633,20 +747,31 @@
         ).then(function() {
           isScanning = true;
           scannerInitialized = true;
-          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> Scanning...', 'success');
+          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> Scanning... Point at a QR code.', 'success');
           updateText('🔍 Ready - Scan student QR codes');
           startBtn.classList.add('hidden');
           stopBtn.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
           isUsingFallback = false;
+          scannerStartAttempts = 0;
         }).catch(function(err) {
-          console.warn('Modern scanner failed, trying fallback:', err.message);
-          startFallbackScanner();
+          console.warn('Modern scanner failed:', err.message);
+          if (scannerStartAttempts < maxScannerAttempts) {
+            updateStatus('<i class="fas fa-redo"></i> Retry ' + scannerStartAttempts + '/' + maxScannerAttempts + '...', 'warning');
+            setTimeout(startScannerManually, 1000);
+          } else {
+            startFallbackScanner();
+          }
         });
       } catch (err) {
-        console.warn('Modern scanner error, using fallback:', err.message);
-        startFallbackScanner();
+        console.warn('Scanner error:', err.message);
+        if (scannerStartAttempts < maxScannerAttempts) {
+          updateStatus('<i class="fas fa-redo"></i> Retry ' + scannerStartAttempts + '/' + maxScannerAttempts + '...', 'warning');
+          setTimeout(startScannerManually, 1000);
+        } else {
+          startFallbackScanner();
+        }
       }
     }
 
@@ -655,7 +780,7 @@
     // ========================================
     function startFallbackScanner() {
       isUsingFallback = true;
-      updateStatus('<i class="fas fa-info-circle"></i> Using fallback scanner mode. Please use manual entry.', 'warning');
+      updateStatus('<i class="fas fa-info-circle"></i> Using fallback mode. Please use manual entry.', 'warning');
       updateText('📝 Use the manual entry below');
       
       startBtn.classList.add('hidden');
@@ -673,7 +798,7 @@
         readerEl.innerHTML = '';
         readerEl.appendChild(video);
         
-        // Try to get user media
+        // Check for getUserMedia support (old method)
         if (navigator.getUserMedia) {
           navigator.getUserMedia(
             { video: { facingMode: "environment" } },
@@ -690,17 +815,37 @@
               updateStatus('<i class="fas fa-exclamation-circle"></i> Camera unavailable. Please use manual entry.', 'error');
               updateText('📝 Enter LRN manually below');
               scanOverlay.classList.remove('active');
+              showManualEntryMode();
             }
           );
+        } else if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          // Modern method with promise
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) {
+              videoStream = stream;
+              video.srcObject = stream;
+              video.play();
+              scanOverlay.classList.add('active');
+              updateStatus('<i class="fas fa-camera"></i> Camera active. Use manual entry.', 'info');
+              updateText('📷 Camera is on - Use manual LRN entry');
+            })
+            .catch(function(err) {
+              updateStatus('<i class="fas fa-exclamation-circle"></i> Camera unavailable. Use manual entry.', 'error');
+              updateText('📝 Enter LRN manually below');
+              scanOverlay.classList.remove('active');
+              showManualEntryMode();
+            });
         } else {
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported. Please use manual entry.', 'error');
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported. Use manual entry.', 'error');
           updateText('📝 Enter LRN manually below');
           scanOverlay.classList.remove('active');
+          showManualEntryMode();
         }
       } catch(e) {
         updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not available. Use manual entry.', 'error');
         updateText('📝 Enter LRN manually');
         scanOverlay.classList.remove('active');
+        showManualEntryMode();
       }
       
       startBtn.disabled = false;
@@ -764,8 +909,7 @@
       } else if (/^\d{12}$/.test(decodedText)) {
         lrn = decodedText;
       } else {
-        resultDiv.innerHTML = 
-          '<div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">' +
+        resultDiv.innerHTML = '<div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">' +
             '<i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>' +
             '<div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid QR Code</div>' +
             '<div style="font-size:11px;color:#721c24;">Please scan a valid attendance QR code.</div>' +
@@ -775,8 +919,7 @@
       }
 
       if (!/^\d{12}$/.test(lrn)) {
-        resultDiv.innerHTML = 
-          '<div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">' +
+        resultDiv.innerHTML = '<div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">' +
             '<i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>' +
             '<div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid LRN</div>' +
             '<div style="font-size:11px;color:#721c24;">LRN must be 12 digits: ' + lrn + '</div>' +
@@ -829,6 +972,7 @@
             }, 2000);
             
           } catch(e) {
+            console.warn('Error sending to parent:', e.message);
             showSendStatus('⚠️ Could not send to form. Copy the data below.', 'warning');
             copyToClipboard(lrn, finalEmail);
             setTimeout(function() { isProcessing = false; }, 1500);
@@ -875,8 +1019,7 @@
       var testEmail = 'test@example.com';
       var testData = testEmail + '|' + testLRN;
       
-      resultDiv.innerHTML = 
-        '<div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">' +
+      resultDiv.innerHTML = '<div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">' +
           '<i class="fas fa-info-circle"></i> Test QR Data: <strong>' + testData + '</strong><br>' +
           '<span style="font-size:11px;">Copy this and paste in the LRN field above, or scan with your device.</span>' +
         '</div>';
@@ -894,7 +1037,9 @@
       var url = baseUrl + '?' + endpoint;
       if (params) {
         for (var key in params) {
-          url += '&' + key + '=' + encodeURIComponent(params[key]);
+          if (params.hasOwnProperty(key)) {
+            url += '&' + key + '=' + encodeURIComponent(params[key]);
+          }
         }
       }
       return url;
@@ -902,26 +1047,51 @@
 
     function lookupStudent(lrn, callback) {
       var url = getApiUrl('action=getStudent', { lrn: lrn });
-      fetch(url)
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-          if (data && data.name) {
-            callback(data.name, data.email);
-          } else {
+      
+      // Check if fetch is available
+      if (typeof fetch === 'function') {
+        fetch(url)
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            if (data && data.name) {
+              callback(data.name, data.email);
+            } else {
+              callback('Student', '');
+            }
+          })
+          .catch(function() {
+            callback('Student', '');
+          });
+      } else {
+        // Use XHR for older browsers
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            try {
+              var data = JSON.parse(xhr.responseText);
+              if (data && data.name) {
+                callback(data.name, data.email);
+              } else {
+                callback('Student', '');
+              }
+            } catch(e) {
+              callback('Student', '');
+            }
+          } else if (xhr.readyState === 4) {
             callback('Student', '');
           }
-        })
-        .catch(function() {
-          callback('Student', '');
-        });
+        };
+        xhr.send();
+      }
     }
 
     function copyToClipboard(lrn, email) {
       var text = email + '|' + lrn;
+      
       if (navigator.clipboard) {
         navigator.clipboard.writeText(text).then(function() {
-          resultDiv.innerHTML += 
-            '<div style="margin-top:10px;padding:10px;background:#d4edda;border-radius:8px;font-size:13px;">' +
+          resultDiv.innerHTML += '<div style="margin-top:10px;padding:10px;background:#d4edda;border-radius:8px;font-size:13px;">' +
               '<strong>Copied:</strong> ' + text +
             '</div>';
           updateText('📋 Copied to clipboard');
@@ -934,11 +1104,25 @@
     }
 
     function fallbackCopy(text) {
-      resultDiv.innerHTML += 
-        '<div style="margin-top:10px;padding:10px;background:#fff3cd;border-radius:8px;font-size:13px;">' +
+      resultDiv.innerHTML += '<div style="margin-top:10px;padding:10px;background:#fff3cd;border-radius:8px;font-size:13px;">' +
           '<strong>Data:</strong> ' + text +
         '</div>';
       updateText('📋 Copy the data above');
+      
+      // Also try to create a textarea for manual copy
+      var textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        updateText('📋 Copied to clipboard (manual method)');
+      } catch(e) {
+        // Fallback failed
+      }
+      document.body.removeChild(textarea);
     }
 
     // ========================================
@@ -959,25 +1143,26 @@
     // START ON PAGE LOAD
     // ========================================
     window.addEventListener('DOMContentLoaded', function() {
+      // Check browser compatibility
+      checkBrowserCompatibility();
+      
+      // Load server date/time
       loadServerDateTime();
       
       // Check if HTML5 QR library is available
       if (typeof Html5Qrcode === 'undefined') {
-        updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Using manual entry mode.', 'warning');
-        updateText('📝 Use the manual entry below');
-        document.getElementById('browserCheck').innerHTML += 
-          '<br><i class="fas fa-download"></i> <strong>Tip:</strong> Refresh the page to load the QR library.';
+        updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Attempting to load...', 'warning');
+        // Try to load the library
+        loadLibraryAndStart();
       } else {
         updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start Camera" to begin.', 'info');
         updateText('📱 Tap Start Camera');
-      }
-      
-      // Auto-start after a delay if library is loaded
-      setTimeout(function() {
-        if (typeof Html5Qrcode !== 'undefined') {
+        
+        // Auto-start after a delay
+        setTimeout(function() {
           startScannerManually();
-        }
-      }, 1500);
+        }, 1500);
+      }
     });
 
     window.addEventListener('beforeunload', function() {
