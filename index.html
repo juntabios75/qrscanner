@@ -48,6 +48,7 @@
       width: 100% !important;
       height: auto !important;
       display: block;
+      transform: scaleX(-1); /* Mirror front camera */
     }
     #reader-container canvas {
       display: none;
@@ -265,6 +266,16 @@
     }
     .browser-check strong { color: #d39e00; }
     
+    .camera-switch {
+      text-align: center;
+      margin-top: 8px;
+    }
+    .camera-switch .btn {
+      padding: 8px 16px;
+      font-size: 13px;
+      min-height: 36px;
+    }
+    
     @keyframes slideIn {
       from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -290,7 +301,7 @@
     <div class="header">
       <i class="fas fa-qrcode"></i>
       <h2>QR Attendance Scanner</h2>
-      <p>Scan QR code or enter LRN manually</p>
+      <p>Scan QR code to auto-fill attendance form</p>
     </div>
 
     <!-- Browser Compatibility Check -->
@@ -321,6 +332,13 @@
         <div class="corner bl"></div>
         <div class="corner br"></div>
       </div>
+    </div>
+    
+    <!-- Camera Switch Button -->
+    <div class="camera-switch">
+      <button class="btn btn-secondary" id="switchCameraBtn">
+        <i class="fas fa-sync-alt"></i> Switch Camera
+      </button>
     </div>
     
     <div id="result"></div>
@@ -365,7 +383,6 @@
     // ========================================
     // POLYFILLS FOR OLDER BROWSERS
     // ========================================
-    // Polyfill for Array.prototype.forEach
     if (!Array.prototype.forEach) {
       Array.prototype.forEach = function(callback, thisArg) {
         for (var i = 0; i < this.length; i++) {
@@ -374,7 +391,6 @@
       };
     }
 
-    // Polyfill for Object.keys
     if (!Object.keys) {
       Object.keys = function(obj) {
         var keys = [];
@@ -406,6 +422,8 @@
     var isUsingFallback = false;
     var scannerStartAttempts = 0;
     var maxScannerAttempts = 3;
+    var currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+    var isMirrored = true; // Mirror front camera
 
     // ========================================
     // DOM REFS
@@ -416,6 +434,7 @@
     var scanCountEl = document.getElementById('scanCount');
     var stopBtn = document.getElementById('stopBtn');
     var startBtn = document.getElementById('startBtn');
+    var switchCameraBtn = document.getElementById('switchCameraBtn');
     var sendStatus = document.getElementById('sendStatus');
     var serverDateEl = document.getElementById('serverDate');
     var serverTimeEl = document.getElementById('serverTime');
@@ -437,7 +456,6 @@
       var isOldBrowser = false;
       var browserVersion = 0;
       
-      // Detect browser
       if (ua.indexOf('Chrome') > -1) {
         browserName = 'Chrome';
         var chromeMatch = ua.match(/Chrome\/(\d+)/);
@@ -482,7 +500,6 @@
         checkDiv.style.background = '#f8d7da';
         checkDiv.style.color = '#721c24';
         checkDiv.style.borderColor = '#dc3545';
-        // Show manual input more prominently
         document.querySelector('.manual-input').style.borderColor = '#dc3545';
         document.querySelector('.manual-input').style.borderWidth = '2px';
       } else {
@@ -491,7 +508,6 @@
       
       deviceInfo.textContent = deviceInfoText;
       
-      // Check for HTTPS
       if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
         document.getElementById('browserCheck').innerHTML += 
           '<br><i class="fas fa-lock"></i> <strong>HTTPS required</strong> for camera access.';
@@ -504,22 +520,19 @@
     function loadServerDateTime() {
       var url = getWebAppUrl() + '?action=getServerDateTime';
       
-      // Check if fetch is available
-      if (typeof fetch !== 'function') {
-        // Fallback to XHR for older browsers
+      if (typeof fetch === 'function') {
+        fetch(url)
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            serverDateTime = data;
+            updateServerDisplay(data);
+          })
+          .catch(function() {
+            fallbackDateTime();
+          });
+      } else {
         loadServerDateTimeXHR();
-        return;
       }
-      
-      fetch(url)
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-          serverDateTime = data;
-          updateServerDisplay(data);
-        })
-        .catch(function() {
-          fallbackDateTime();
-        });
     }
 
     function loadServerDateTimeXHR() {
@@ -665,16 +678,14 @@
     }
 
     // ========================================
-    // QR SCANNER - COMPATIBLE VERSION
+    // QR SCANNER - FRONT CAMERA VERSION
     // ========================================
     function startScannerManually() {
       scannerStartAttempts++;
       
-      // Check if Html5Qrcode is available
       if (typeof Html5Qrcode !== 'undefined') {
         startModernScanner();
       } else {
-        // Try to load the library dynamically
         loadLibraryAndStart();
       }
     }
@@ -698,17 +709,16 @@
     function showManualEntryMode() {
       startBtn.classList.add('hidden');
       stopBtn.classList.add('hidden');
+      switchCameraBtn.classList.add('hidden');
       updateStatus('<i class="fas fa-info-circle"></i> Using manual entry mode. Enter LRN below.', 'info');
       updateText('📝 Enter LRN manually');
       scanOverlay.classList.remove('active');
       
-      // Highlight manual input
       document.querySelector('.manual-input').style.borderColor = '#28a745';
       document.querySelector('.manual-input').style.borderWidth = '2px';
     }
 
     function startModernScanner() {
-      // Clean up any existing scanner
       if (html5QrCode) {
         try {
           html5QrCode.stop().then(function() {
@@ -725,7 +735,6 @@
         var readerElement = document.getElementById('reader');
         readerElement.innerHTML = '';
         
-        // Check if Html5Qrcode is available
         if (typeof Html5Qrcode === 'undefined') {
           throw new Error('Html5Qrcode library not loaded');
         }
@@ -733,28 +742,47 @@
         html5QrCode = new Html5Qrcode("reader");
         scanOverlay.classList.add('active');
         
+        // Apply mirror effect for front camera
+        var videoElement = document.querySelector('#reader video');
+        if (videoElement) {
+          videoElement.style.transform = 'scaleX(-1)';
+        }
+        
         var config = {
           fps: 10,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0
         };
 
+        // Use 'user' for front camera (default)
+        var facingMode = currentFacingMode || 'user';
+        
         html5QrCode.start(
-          { facingMode: "environment" },
+          { facingMode: facingMode },
           config,
           onScanSuccess,
           onScanError
         ).then(function() {
           isScanning = true;
           scannerInitialized = true;
-          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> Scanning... Point at a QR code.', 'success');
+          var cameraName = (facingMode === 'user') ? 'Front' : 'Back';
+          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' camera active. Point at a QR code.', 'success');
           updateText('🔍 Ready - Scan student QR codes');
           startBtn.classList.add('hidden');
           stopBtn.classList.remove('hidden');
+          switchCameraBtn.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
           isUsingFallback = false;
           scannerStartAttempts = 0;
+          
+          // Apply mirror effect for front camera
+          var videoEl = document.querySelector('#reader video');
+          if (videoEl && facingMode === 'user') {
+            videoEl.style.transform = 'scaleX(-1)';
+          } else if (videoEl) {
+            videoEl.style.transform = 'scaleX(1)';
+          }
         }).catch(function(err) {
           console.warn('Modern scanner failed:', err.message);
           if (scannerStartAttempts < maxScannerAttempts) {
@@ -776,6 +804,35 @@
     }
 
     // ========================================
+    // SWITCH CAMERA
+    // ========================================
+    function switchCamera() {
+      if (!isScanning) {
+        updateStatus('<i class="fas fa-exclamation-circle"></i> Start scanner first.', 'warning');
+        return;
+      }
+      
+      // Toggle between front and back
+      currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+      
+      var cameraName = (currentFacingMode === 'user') ? 'Front' : 'Back';
+      updateStatus('<i class="fas fa-sync-alt fa-spin"></i> Switching to ' + cameraName + ' camera...', 'info');
+      
+      // Stop current scanner and restart with new facing mode
+      if (html5QrCode && isScanning) {
+        html5QrCode.stop().then(function() {
+          isScanning = false;
+          // Restart with new facing mode
+          startModernScanner();
+        }).catch(function() {
+          // Force restart
+          isScanning = false;
+          startModernScanner();
+        });
+      }
+    }
+
+    // ========================================
     // FALLBACK SCANNER - WORKS ON OLDER BROWSERS
     // ========================================
     function startFallbackScanner() {
@@ -785,48 +842,51 @@
       
       startBtn.classList.add('hidden');
       stopBtn.classList.add('hidden');
+      switchCameraBtn.classList.add('hidden');
       
-      // Try to access camera directly (older method)
       try {
         var video = document.createElement('video');
         video.setAttribute('autoplay', '');
         video.setAttribute('playsinline', '');
         video.style.width = '100%';
         video.style.height = 'auto';
+        video.style.transform = 'scaleX(-1)'; // Mirror front camera
         
         var readerEl = document.getElementById('reader');
         readerEl.innerHTML = '';
         readerEl.appendChild(video);
         
-        // Check for getUserMedia support (old method)
+        var facingMode = currentFacingMode || 'user';
+        
         if (navigator.getUserMedia) {
           navigator.getUserMedia(
-            { video: { facingMode: "environment" } },
+            { video: { facingMode: facingMode } },
             function(stream) {
               videoStream = stream;
               video.srcObject = stream;
               video.play();
               scanOverlay.classList.add('active');
-              updateStatus('<i class="fas fa-camera"></i> Camera active. Use manual entry for QR scanning.', 'info');
+              var cameraName = (facingMode === 'user') ? 'Front' : 'Back';
+              updateStatus('<i class="fas fa-camera"></i> ' + cameraName + ' camera active. Use manual entry.', 'info');
               updateText('📷 Camera is on - Use manual LRN entry');
             },
             function(err) {
               console.warn('Fallback camera failed:', err.message);
-              updateStatus('<i class="fas fa-exclamation-circle"></i> Camera unavailable. Please use manual entry.', 'error');
+              updateStatus('<i class="fas fa-exclamation-circle"></i> Camera unavailable. Use manual entry.', 'error');
               updateText('📝 Enter LRN manually below');
               scanOverlay.classList.remove('active');
               showManualEntryMode();
             }
           );
         } else if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          // Modern method with promise
-          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode } })
             .then(function(stream) {
               videoStream = stream;
               video.srcObject = stream;
               video.play();
               scanOverlay.classList.add('active');
-              updateStatus('<i class="fas fa-camera"></i> Camera active. Use manual entry.', 'info');
+              var cameraName = (facingMode === 'user') ? 'Front' : 'Back';
+              updateStatus('<i class="fas fa-camera"></i> ' + cameraName + ' camera active. Use manual entry.', 'info');
               updateText('📷 Camera is on - Use manual LRN entry');
             })
             .catch(function(err) {
@@ -859,6 +919,7 @@
           scannerInitialized = false;
           scanOverlay.classList.remove('active');
           stopBtn.classList.add('hidden');
+          switchCameraBtn.classList.add('hidden');
           startBtn.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
@@ -872,11 +933,13 @@
         } catch(e) {}
         scanOverlay.classList.remove('active');
         stopBtn.classList.add('hidden');
+        switchCameraBtn.classList.add('hidden');
         startBtn.classList.remove('hidden');
         startBtn.disabled = false;
         startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
       } else {
         stopBtn.classList.add('hidden');
+        switchCameraBtn.classList.add('hidden');
         startBtn.classList.remove('hidden');
         startBtn.disabled = false;
         startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
@@ -987,9 +1050,6 @@
 
     function onScanError(errorMessage) {
       // Silent - only log critical errors
-      if (errorMessage && errorMessage.indexOf('NotFoundError') > -1) {
-        // This is normal when scanning
-      }
     }
 
     // ========================================
@@ -1024,7 +1084,6 @@
           '<span style="font-size:11px;">Copy this and paste in the LRN field above, or scan with your device.</span>' +
         '</div>';
       
-      // Auto-fill the LRN field
       manualLRN.value = '123456789012';
       updateStatus('<i class="fas fa-check-circle"></i> Test LRN generated! Click "Submit LRN" to test.', 'success');
     }
@@ -1048,7 +1107,6 @@
     function lookupStudent(lrn, callback) {
       var url = getApiUrl('action=getStudent', { lrn: lrn });
       
-      // Check if fetch is available
       if (typeof fetch === 'function') {
         fetch(url)
           .then(function(response) { return response.json(); })
@@ -1063,7 +1121,6 @@
             callback('Student', '');
           });
       } else {
-        // Use XHR for older browsers
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url, true);
         xhr.onreadystatechange = function() {
@@ -1109,7 +1166,6 @@
         '</div>';
       updateText('📋 Copy the data above');
       
-      // Also try to create a textarea for manual copy
       var textarea = document.createElement('textarea');
       textarea.value = text;
       textarea.style.position = 'fixed';
@@ -1119,9 +1175,7 @@
       try {
         document.execCommand('copy');
         updateText('📋 Copied to clipboard (manual method)');
-      } catch(e) {
-        // Fallback failed
-      }
+      } catch(e) {}
       document.body.removeChild(textarea);
     }
 
@@ -1130,6 +1184,7 @@
     // ========================================
     startBtn.addEventListener('click', startScannerManually);
     stopBtn.addEventListener('click', stopScanner);
+    switchCameraBtn.addEventListener('click', switchCamera);
     manualSubmitBtn.addEventListener('click', submitManualLRN);
     testQRBtn.addEventListener('click', generateTestQR);
 
@@ -1143,22 +1198,19 @@
     // START ON PAGE LOAD
     // ========================================
     window.addEventListener('DOMContentLoaded', function() {
-      // Check browser compatibility
       checkBrowserCompatibility();
-      
-      // Load server date/time
       loadServerDateTime();
       
-      // Check if HTML5 QR library is available
+      // Set initial camera mode to 'user' (front camera)
+      currentFacingMode = 'user';
+      
       if (typeof Html5Qrcode === 'undefined') {
         updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Attempting to load...', 'warning');
-        // Try to load the library
         loadLibraryAndStart();
       } else {
-        updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start Camera" to begin.', 'info');
+        updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start Camera" to begin with front camera.', 'info');
         updateText('📱 Tap Start Camera');
         
-        // Auto-start after a delay
         setTimeout(function() {
           startScannerManually();
         }, 1500);
