@@ -281,6 +281,9 @@
       border-radius: 10px;
       flex-wrap: wrap;
     }
+    .camera-controls.hidden {
+      display: none !important;
+    }
     
     .camera-indicator {
       display: inline-flex;
@@ -299,6 +302,13 @@
       font-size: 13px;
       min-height: 36px;
     }
+    
+    .btn-switch-camera {
+      background: linear-gradient(135deg, #17a2b8, #0dcaf0);
+      color: white;
+    }
+    .btn-switch-camera:active { transform: scale(0.95); }
+    .btn-switch-camera:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(23,162,184,0.3); }
     
     @keyframes slideIn {
       from { opacity: 0; transform: translateY(-10px); }
@@ -358,12 +368,12 @@
       </div>
     </div>
     
-    <!-- Camera Controls - Front/Back Switch -->
+    <!-- Camera Controls - Always Visible -->
     <div class="camera-controls" id="cameraControls">
       <span class="camera-indicator front" id="cameraIndicator">
         <i class="fas fa-user"></i> Front Camera
       </span>
-      <button class="btn btn-info" id="switchCameraBtn">
+      <button class="btn btn-switch-camera" id="switchCameraBtn">
         <i class="fas fa-sync-alt"></i> Switch Camera
       </button>
     </div>
@@ -781,7 +791,8 @@
     function showManualEntryMode() {
       startBtn.classList.add('hidden');
       stopBtn.classList.add('hidden');
-      cameraControls.classList.add('hidden');
+      // KEEP camera controls visible
+      cameraControls.classList.remove('hidden');
       updateStatus('<i class="fas fa-info-circle"></i> Using manual entry mode. Enter LRN below.', 'info');
       updateText('📝 Enter LRN manually');
       scanOverlay.classList.remove('active');
@@ -836,6 +847,7 @@
           updateText('🔍 Scanning for QR codes...');
           startBtn.classList.add('hidden');
           stopBtn.classList.remove('hidden');
+          // KEEP camera controls visible
           cameraControls.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
@@ -867,8 +879,11 @@
     // SWITCH CAMERA - TOGGLE FRONT/BACK
     // ========================================
     function switchCamera() {
-      if (!isScanning) {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Start scanner first.', 'warning');
+      // Allow switching even if not scanning (will start scanner)
+      if (!isScanning && !scannerInitialized) {
+        updateStatus('<i class="fas fa-info-circle"></i> Starting scanner with ' + 
+          (currentFacingMode === 'user' ? 'back' : 'front') + ' camera...', 'info');
+        startScannerManually();
         return;
       }
       
@@ -887,6 +902,8 @@
           isScanning = false;
           startModernScannerWithMode(currentFacingMode);
         });
+      } else {
+        startModernScannerWithMode(currentFacingMode);
       }
     }
 
@@ -937,6 +954,7 @@
           updateText('🔍 Scanning for QR codes...');
           startBtn.classList.add('hidden');
           stopBtn.classList.remove('hidden');
+          // KEEP camera controls visible
           cameraControls.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
@@ -946,12 +964,12 @@
         }).catch(function(err) {
           updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start camera: ' + err.message, 'error');
           updateText('❌ Camera error');
-          stopScanner();
+          // Don't hide controls on error
         });
       } catch (err) {
         updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to initialize: ' + err.message, 'error');
         updateText('❌ Initialization error');
-        stopScanner();
+        // Don't hide controls on error
       }
     }
 
@@ -965,7 +983,8 @@
       
       startBtn.classList.add('hidden');
       stopBtn.classList.add('hidden');
-      cameraControls.classList.add('hidden');
+      // KEEP camera controls visible
+      cameraControls.classList.remove('hidden');
       
       try {
         var video = document.createElement('video');
@@ -1046,7 +1065,8 @@
           scannerInitialized = false;
           scanOverlay.classList.remove('active');
           stopBtn.classList.add('hidden');
-          cameraControls.classList.add('hidden');
+          // KEEP camera controls visible
+          cameraControls.classList.remove('hidden');
           startBtn.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
@@ -1060,13 +1080,15 @@
         } catch(e) {}
         scanOverlay.classList.remove('active');
         stopBtn.classList.add('hidden');
-        cameraControls.classList.add('hidden');
+        // KEEP camera controls visible
+        cameraControls.classList.remove('hidden');
         startBtn.classList.remove('hidden');
         startBtn.disabled = false;
         startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
       } else {
         stopBtn.classList.add('hidden');
-        cameraControls.classList.add('hidden');
+        // KEEP camera controls visible
+        cameraControls.classList.remove('hidden');
         startBtn.classList.remove('hidden');
         startBtn.disabled = false;
         startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
