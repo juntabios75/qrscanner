@@ -48,7 +48,7 @@
       width: 100% !important;
       height: auto !important;
       display: block;
-      transform: scaleX(-1); /* Mirror front camera by default */
+      transform: scaleX(-1); /* Mirror front camera */
     }
     #reader-container canvas {
       display: none;
@@ -112,8 +112,6 @@
     .btn-secondary:active { transform: scale(0.95); }
     .btn-warning { background: linear-gradient(135deg, #f39c12, #e67e22); color: white; }
     .btn-warning:active { transform: scale(0.95); }
-    .btn-info { background: linear-gradient(135deg, #17a2b8, #0dcaf0); color: white; }
-    .btn-info:active { transform: scale(0.95); }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
     
     .btn-group { 
@@ -278,18 +276,6 @@
       min-height: 36px;
     }
     
-    .camera-indicator {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-top: 4px;
-      margin-right: 8px;
-    }
-    .camera-indicator.front { background: #d1ecf1; color: #0c5460; }
-    .camera-indicator.back { background: #d4edda; color: #155724; }
-    
     @keyframes slideIn {
       from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -348,13 +334,10 @@
       </div>
     </div>
     
-    <!-- Camera Status and Switch -->
+    <!-- Camera Switch Button -->
     <div class="camera-switch">
-      <span class="camera-indicator front" id="cameraIndicator">
-        <i class="fas fa-user"></i> Front Camera
-      </span>
-      <button class="btn btn-info" id="switchCameraBtn">
-        <i class="fas fa-sync-alt"></i> Switch to Back
+      <button class="btn btn-secondary" id="switchCameraBtn">
+        <i class="fas fa-sync-alt"></i> Switch Camera
       </button>
     </div>
     
@@ -439,7 +422,8 @@
     var isUsingFallback = false;
     var scannerStartAttempts = 0;
     var maxScannerAttempts = 3;
-    var currentFacingMode = 'user'; // FRONT CAMERA by default
+    var currentFacingMode = 'user'; // 'user' for front camera, 'environment' for back camera
+    var isMirrored = true; // Mirror front camera
 
     // ========================================
     // DOM REFS
@@ -451,7 +435,6 @@
     var stopBtn = document.getElementById('stopBtn');
     var startBtn = document.getElementById('startBtn');
     var switchCameraBtn = document.getElementById('switchCameraBtn');
-    var cameraIndicator = document.getElementById('cameraIndicator');
     var sendStatus = document.getElementById('sendStatus');
     var serverDateEl = document.getElementById('serverDate');
     var serverTimeEl = document.getElementById('serverTime');
@@ -463,21 +446,6 @@
     var testQRBtn = document.getElementById('testQRBtn');
 
     // ========================================
-    // DETECT DEVICE TYPE
-    // ========================================
-    function isTabletDevice() {
-      var ua = navigator.userAgent;
-      var isiPad = /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      var isAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
-      var isTablet = isiPad || isAndroidTablet;
-      
-      // Also check screen size
-      var isLargeScreen = window.screen.width >= 768 || window.screen.height >= 768;
-      
-      return isTablet || (isLargeScreen && /Android|iPad|iPhone/i.test(ua));
-    }
-
-    // ========================================
     // BROWSER COMPATIBILITY CHECK
     // ========================================
     function checkBrowserCompatibility() {
@@ -487,9 +455,6 @@
       var browserName = 'Unknown';
       var isOldBrowser = false;
       var browserVersion = 0;
-      
-      var isTablet = isTabletDevice();
-      var deviceType = isTablet ? 'Tablet' : (isMobile ? 'Phone' : 'Desktop');
       
       if (ua.indexOf('Chrome') > -1) {
         browserName = 'Chrome';
@@ -525,28 +490,11 @@
       if (browserVersion > 0) {
         deviceInfoText += ' ' + browserVersion;
       }
-      deviceInfoText += ' (' + deviceType + ')';
-      
-      var checkDiv = document.getElementById('browserCheck');
-      
-      if (isTablet) {
-        deviceInfoText += ' 📱 Tablet detected - using FRONT camera for QR scanning';
-        checkDiv.innerHTML = '<i class="fas fa-tablet-alt"></i> ' +
-          '<strong>Tablet detected.</strong> Using FRONT camera for QR scanning. ' +
-          'Hold the QR code in front of the tablet\'s front camera.';
-        checkDiv.style.background = '#d1ecf1';
-        checkDiv.style.color = '#0c5460';
-        checkDiv.style.borderColor = '#17a2b8';
-      } else {
-        checkDiv.innerHTML = '<i class="fas fa-info-circle"></i> ' +
-          'Using FRONT camera for QR scanning. Hold the QR code in front of the camera.';
-        checkDiv.style.background = '#d4edda';
-        checkDiv.style.color = '#155724';
-        checkDiv.style.borderColor = '#28a745';
-      }
+      deviceInfoText += isMobile ? ' (Mobile)' : ' (Desktop)';
       
       if (isOldBrowser) {
         deviceInfoText += ' ⚠️ Older version - using compatibility mode';
+        var checkDiv = document.getElementById('browserCheck');
         checkDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' +
           '<strong>Note:</strong> Your browser version is older. Using compatibility mode. Manual entry is always available.';
         checkDiv.style.background = '#f8d7da';
@@ -554,6 +502,8 @@
         checkDiv.style.borderColor = '#dc3545';
         document.querySelector('.manual-input').style.borderColor = '#dc3545';
         document.querySelector('.manual-input').style.borderWidth = '2px';
+      } else {
+        deviceInfoText += ' ✓ Updated';
       }
       
       deviceInfo.textContent = deviceInfoText;
@@ -728,33 +678,7 @@
     }
 
     // ========================================
-    // UPDATE CAMERA INDICATOR
-    // ========================================
-    function updateCameraIndicator() {
-      var isFront = (currentFacingMode === 'user');
-      var cameraName = isFront ? 'Front Camera' : 'Back Camera';
-      var icon = isFront ? 'fa-user' : 'fa-camera';
-      var className = isFront ? 'front' : 'back';
-      var switchText = isFront ? 'Switch to Back' : 'Switch to Front';
-      
-      cameraIndicator.className = 'camera-indicator ' + className;
-      cameraIndicator.innerHTML = '<i class="fas ' + icon + '"></i> ' + cameraName;
-      
-      switchCameraBtn.innerHTML = '<i class="fas fa-sync-alt"></i> ' + switchText;
-      
-      // Update video mirroring
-      var videoEl = document.querySelector('#reader video');
-      if (videoEl) {
-        if (isFront) {
-          videoEl.style.transform = 'scaleX(-1)';
-        } else {
-          videoEl.style.transform = 'scaleX(1)';
-        }
-      }
-    }
-
-    // ========================================
-    // QR SCANNER - FRONT CAMERA DEFAULT
+    // QR SCANNER - FRONT CAMERA VERSION
     // ========================================
     function startScannerManually() {
       scannerStartAttempts++;
@@ -786,7 +710,6 @@
       startBtn.classList.add('hidden');
       stopBtn.classList.add('hidden');
       switchCameraBtn.classList.add('hidden');
-      cameraIndicator.classList.add('hidden');
       updateStatus('<i class="fas fa-info-circle"></i> Using manual entry mode. Enter LRN below.', 'info');
       updateText('📝 Enter LRN manually');
       scanOverlay.classList.remove('active');
@@ -819,10 +742,11 @@
         html5QrCode = new Html5Qrcode("reader");
         scanOverlay.classList.add('active');
         
-        // Always use FRONT camera (user)
-        var facingMode = 'user';
-        currentFacingMode = 'user';
-        updateCameraIndicator();
+        // Apply mirror effect for front camera
+        var videoElement = document.querySelector('#reader video');
+        if (videoElement) {
+          videoElement.style.transform = 'scaleX(-1)';
+        }
         
         var config = {
           fps: 10,
@@ -830,6 +754,9 @@
           aspectRatio: 1.0
         };
 
+        // Use 'user' for front camera (default)
+        var facingMode = currentFacingMode || 'user';
+        
         html5QrCode.start(
           { facingMode: facingMode },
           config,
@@ -838,24 +765,24 @@
         ).then(function() {
           isScanning = true;
           scannerInitialized = true;
-          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> FRONT camera active. Point QR code at the front camera.', 'success');
-          updateText('🔍 Hold QR code in front of the camera');
+          var cameraName = (facingMode === 'user') ? 'Front' : 'Back';
+          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' camera active. Point at a QR code.', 'success');
+          updateText('🔍 Ready - Scan student QR codes');
           startBtn.classList.add('hidden');
           stopBtn.classList.remove('hidden');
           switchCameraBtn.classList.remove('hidden');
-          cameraIndicator.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
           isUsingFallback = false;
           scannerStartAttempts = 0;
           
-          // Ensure mirror effect for front camera
+          // Apply mirror effect for front camera
           var videoEl = document.querySelector('#reader video');
-          if (videoEl) {
+          if (videoEl && facingMode === 'user') {
             videoEl.style.transform = 'scaleX(-1)';
+          } else if (videoEl) {
+            videoEl.style.transform = 'scaleX(1)';
           }
-          
-          updateCameraIndicator();
         }).catch(function(err) {
           console.warn('Modern scanner failed:', err.message);
           if (scannerStartAttempts < maxScannerAttempts) {
@@ -896,92 +823,17 @@
         html5QrCode.stop().then(function() {
           isScanning = false;
           // Restart with new facing mode
-          startModernScannerWithMode(currentFacingMode);
+          startModernScanner();
         }).catch(function() {
+          // Force restart
           isScanning = false;
-          startModernScannerWithMode(currentFacingMode);
+          startModernScanner();
         });
-      }
-    }
-
-    function startModernScannerWithMode(facingMode) {
-      if (html5QrCode) {
-        try {
-          html5QrCode.stop().then(function() {
-            html5QrCode.clear();
-            html5QrCode = null;
-            actuallyStartScanner(facingMode);
-          }).catch(function() { 
-            html5QrCode = null;
-            actuallyStartScanner(facingMode);
-          });
-        } catch(e) { 
-          html5QrCode = null;
-          actuallyStartScanner(facingMode);
-        }
-      } else {
-        actuallyStartScanner(facingMode);
-      }
-    }
-
-    function actuallyStartScanner(facingMode) {
-      try {
-        var readerElement = document.getElementById('reader');
-        readerElement.innerHTML = '';
-        
-        html5QrCode = new Html5Qrcode("reader");
-        scanOverlay.classList.add('active');
-        
-        var config = {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0
-        };
-
-        html5QrCode.start(
-          { facingMode: facingMode },
-          config,
-          onScanSuccess,
-          onScanError
-        ).then(function() {
-          isScanning = true;
-          scannerInitialized = true;
-          var cameraName = (facingMode === 'user') ? 'FRONT' : 'BACK';
-          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' camera active.', 'success');
-          updateText('🔍 Scanning for QR codes...');
-          startBtn.classList.add('hidden');
-          stopBtn.classList.remove('hidden');
-          switchCameraBtn.classList.remove('hidden');
-          cameraIndicator.classList.remove('hidden');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
-          isUsingFallback = false;
-          
-          // Apply mirror for front camera
-          var videoEl = document.querySelector('#reader video');
-          if (videoEl) {
-            if (facingMode === 'user') {
-              videoEl.style.transform = 'scaleX(-1)';
-            } else {
-              videoEl.style.transform = 'scaleX(1)';
-            }
-          }
-          
-          updateCameraIndicator();
-        }).catch(function(err) {
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start camera: ' + err.message, 'error');
-          updateText('❌ Camera error');
-          stopScanner();
-        });
-      } catch (err) {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to initialize: ' + err.message, 'error');
-        updateText('❌ Initialization error');
-        stopScanner();
       }
     }
 
     // ========================================
-    // FALLBACK SCANNER
+    // FALLBACK SCANNER - WORKS ON OLDER BROWSERS
     // ========================================
     function startFallbackScanner() {
       isUsingFallback = true;
@@ -991,7 +843,6 @@
       startBtn.classList.add('hidden');
       stopBtn.classList.add('hidden');
       switchCameraBtn.classList.add('hidden');
-      cameraIndicator.classList.add('hidden');
       
       try {
         var video = document.createElement('video');
@@ -999,13 +850,13 @@
         video.setAttribute('playsinline', '');
         video.style.width = '100%';
         video.style.height = 'auto';
-        video.style.transform = 'scaleX(-1)'; // Mirror for front camera
+        video.style.transform = 'scaleX(-1)'; // Mirror front camera
         
         var readerEl = document.getElementById('reader');
         readerEl.innerHTML = '';
         readerEl.appendChild(video);
         
-        var facingMode = 'user'; // Front camera
+        var facingMode = currentFacingMode || 'user';
         
         if (navigator.getUserMedia) {
           navigator.getUserMedia(
@@ -1015,8 +866,9 @@
               video.srcObject = stream;
               video.play();
               scanOverlay.classList.add('active');
-              updateStatus('<i class="fas fa-camera"></i> FRONT camera active. Use manual entry if needed.', 'info');
-              updateText('📷 Camera is on - Use manual LRN entry if needed');
+              var cameraName = (facingMode === 'user') ? 'Front' : 'Back';
+              updateStatus('<i class="fas fa-camera"></i> ' + cameraName + ' camera active. Use manual entry.', 'info');
+              updateText('📷 Camera is on - Use manual LRN entry');
             },
             function(err) {
               console.warn('Fallback camera failed:', err.message);
@@ -1033,8 +885,9 @@
               video.srcObject = stream;
               video.play();
               scanOverlay.classList.add('active');
-              updateStatus('<i class="fas fa-camera"></i> FRONT camera active. Use manual entry if needed.', 'info');
-              updateText('📷 Camera is on - Use manual LRN entry if needed');
+              var cameraName = (facingMode === 'user') ? 'Front' : 'Back';
+              updateStatus('<i class="fas fa-camera"></i> ' + cameraName + ' camera active. Use manual entry.', 'info');
+              updateText('📷 Camera is on - Use manual LRN entry');
             })
             .catch(function(err) {
               updateStatus('<i class="fas fa-exclamation-circle"></i> Camera unavailable. Use manual entry.', 'error');
@@ -1067,7 +920,6 @@
           scanOverlay.classList.remove('active');
           stopBtn.classList.add('hidden');
           switchCameraBtn.classList.add('hidden');
-          cameraIndicator.classList.add('hidden');
           startBtn.classList.remove('hidden');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
@@ -1082,14 +934,12 @@
         scanOverlay.classList.remove('active');
         stopBtn.classList.add('hidden');
         switchCameraBtn.classList.add('hidden');
-        cameraIndicator.classList.add('hidden');
         startBtn.classList.remove('hidden');
         startBtn.disabled = false;
         startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
       } else {
         stopBtn.classList.add('hidden');
         switchCameraBtn.classList.add('hidden');
-        cameraIndicator.classList.add('hidden');
         startBtn.classList.remove('hidden');
         startBtn.disabled = false;
         startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
@@ -1351,15 +1201,14 @@
       checkBrowserCompatibility();
       loadServerDateTime();
       
-      // Set initial camera mode to 'user' (FRONT camera)
+      // Set initial camera mode to 'user' (front camera)
       currentFacingMode = 'user';
-      updateCameraIndicator();
       
       if (typeof Html5Qrcode === 'undefined') {
         updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Attempting to load...', 'warning');
         loadLibraryAndStart();
       } else {
-        updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start Camera" to begin with FRONT camera.', 'info');
+        updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start Camera" to begin with front camera.', 'info');
         updateText('📱 Tap Start Camera');
         
         setTimeout(function() {
