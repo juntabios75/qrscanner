@@ -329,7 +329,6 @@
       <p>Scan QR code to auto-fill attendance form</p>
     </div>
 
-    <!-- Browser Compatibility Check -->
     <div class="browser-check" id="browserCheck">
       <i class="fas fa-info-circle"></i> 
       <strong>Device:</strong> <span id="deviceInfo">Checking...</span>
@@ -365,7 +364,7 @@
         <i class="fas fa-user"></i> Front Camera
       </span>
       <button class="btn btn-info" id="switchCameraBtn">
-        <i class="fas fa-sync-alt"></i> Switch to Back
+        <i class="fas fa-sync-alt"></i> Switch Camera
       </button>
     </div>
     
@@ -384,9 +383,9 @@
       </button>
     </div>
 
-    <!-- Manual LRN Input (Fallback) -->
+    <!-- Manual LRN Input -->
     <div class="manual-input">
-      <label for="manualLRN"><i class="fas fa-keyboard"></i> Manual Entry (if camera not working):</label>
+      <label for="manualLRN"><i class="fas fa-keyboard"></i> Manual Entry:</label>
       <input type="text" id="manualLRN" placeholder="Enter 12-digit LRN" maxlength="12" pattern="[0-9]*" inputmode="numeric">
       <div class="btn-group">
         <button class="btn btn-success" id="manualSubmitBtn">
@@ -482,9 +481,7 @@
       var isiPad = /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       var isAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
       var isTablet = isiPad || isAndroidTablet;
-      
       var isLargeScreen = window.screen.width >= 768 || window.screen.height >= 768;
-      
       return isTablet || (isLargeScreen && /Android|iPad|iPhone/i.test(ua));
     }
 
@@ -730,20 +727,16 @@
     }
 
     // ========================================
-    // UPDATE CAMERA INDICATOR - FRONT/BACK SWITCH
+    // UPDATE CAMERA INDICATOR
     // ========================================
     function updateCameraIndicator() {
       var isFront = (currentFacingMode === 'user');
       var cameraName = isFront ? 'Front Camera' : 'Back Camera';
       var icon = isFront ? 'fa-user' : 'fa-camera';
       var className = isFront ? 'front' : 'back';
-      var switchText = isFront ? 'Switch to Back' : 'Switch to Front';
-      var switchIcon = isFront ? 'fa-camera' : 'fa-user';
       
       cameraIndicator.className = 'camera-indicator ' + className;
       cameraIndicator.innerHTML = '<i class="fas ' + icon + '"></i> ' + cameraName;
-      
-      switchCameraBtn.innerHTML = '<i class="fas ' + switchIcon + '"></i> ' + switchText;
       
       // Update video mirroring for front camera
       var videoEl = document.querySelector('#reader video');
@@ -757,7 +750,7 @@
     }
 
     // ========================================
-    // QR SCANNER - WITH FRONT/BACK SWITCH
+    // QR SCANNER
     // ========================================
     function startScannerManually() {
       scannerStartAttempts++;
@@ -871,7 +864,7 @@
     }
 
     // ========================================
-    // SWITCH CAMERA - FRONT/BACK TOGGLE
+    // SWITCH CAMERA - TOGGLE FRONT/BACK
     // ========================================
     function switchCamera() {
       if (!isScanning) {
