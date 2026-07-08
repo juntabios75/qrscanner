@@ -28,10 +28,6 @@
       max-height: 98vh;
       overflow-y: auto;
     }
-    .header { text-align: center; margin-bottom: 15px; }
-    .header i { font-size: 40px; color: #6c5ce7; margin-bottom: 5px; }
-    .header h2 { color: #2c3e50; font-size: 22px; }
-    .header p { color: #7f8c8d; font-size: 13px; }
     
     #reader-container {
       width: 100%;
@@ -288,12 +284,7 @@
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <i class="fas fa-qrcode"></i>
-      <h2>QR Attendance Scanner</h2>
-      <p>Scan QR code to auto-fill attendance form</p>
-    </div>
-
+    
     <div class="server-datetime" id="serverDateTime">
       <i class="fas fa-calendar-day"></i>
       <span class="date" id="serverDate">Loading date...</span>
@@ -423,18 +414,6 @@
     var attendanceStatusEl = document.getElementById('attendanceStatus');
     var readerContainer = document.getElementById('reader-container');
     var scanOverlay = document.getElementById('scan-overlay');
-
-    // ========================================
-    // DETECT DEVICE TYPE
-    // ========================================
-    function isTabletDevice() {
-      var ua = navigator.userAgent;
-      var isiPad = /iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      var isAndroidTablet = /Android/i.test(ua) && !/Mobile/i.test(ua);
-      var isTablet = isiPad || isAndroidTablet;
-      var isLargeScreen = window.screen.width >= 768 || window.screen.height >= 768;
-      return isTablet || (isLargeScreen && /Android|iPad|iPhone/i.test(ua));
-    }
 
     // ========================================
     // SERVER DATE/TIME FUNCTIONS
