@@ -225,40 +225,6 @@
     .attendance-status.late { background: #fff3cd; color: #856404; }
     .attendance-status.early { background: #d1ecf1; color: #0c5460; }
     
-    .manual-input {
-      margin-top: 12px;
-      padding: 15px;
-      background: #f8f9fa;
-      border-radius: 10px;
-      border: 1px solid #e4e6eb;
-    }
-    .manual-input label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #2c3e50;
-      display: block;
-      margin-bottom: 5px;
-    }
-    .manual-input input {
-      width: 100%;
-      padding: 10px;
-      border: 2px solid #dce0e5;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-      margin-bottom: 8px;
-    }
-    .manual-input input:focus {
-      outline: none;
-      border-color: #6c5ce7;
-    }
-    .manual-input .btn-group {
-      margin-top: 0;
-    }
-    .manual-input .btn-group .btn {
-      flex: 1;
-    }
-    
     .browser-check {
       background: #fff3cd;
       padding: 10px;
@@ -352,6 +318,10 @@
       <span class="time" id="serverTime">Loading time...</span>
       <br>
       <span class="attendance-status on-time" id="attendanceStatus">✓ On Time</span>
+      <br>
+      <span style="font-size: 11px; color: #6c757d;">
+        <i class="fas fa-clock"></i> Attendance: 5:40 AM - 6:15 AM
+      </span>
     </div>
 
     <div id="statusMessage" class="status-box status-info">
@@ -368,7 +338,7 @@
       </div>
     </div>
     
-    <!-- Camera Controls - Always Visible -->
+    <!-- Camera Controls -->
     <div class="camera-controls" id="cameraControls">
       <span class="camera-indicator back" id="cameraIndicator">
         <i class="fas fa-camera"></i> Back Camera
@@ -391,20 +361,6 @@
       <button class="btn btn-secondary" onclick="window.close()">
         <i class="fas fa-times"></i> Close
       </button>
-    </div>
-
-    <!-- Manual LRN Input -->
-    <div class="manual-input">
-      <label for="manualLRN"><i class="fas fa-keyboard"></i> Manual Entry:</label>
-      <input type="text" id="manualLRN" placeholder="Enter 12-digit LRN" maxlength="12" pattern="[0-9]*" inputmode="numeric">
-      <div class="btn-group">
-        <button class="btn btn-success" id="manualSubmitBtn">
-          <i class="fas fa-check"></i> Submit LRN
-        </button>
-        <button class="btn btn-warning" id="testQRBtn">
-          <i class="fas fa-qrcode"></i> Test QR
-        </button>
-      </div>
     </div>
 
     <div class="counter">
@@ -445,6 +401,10 @@
     // ========================================
     var SCRIPT_ID = 'AKfycbys-BkQT0jRnPC6q5neSRj6JqmOFG_BKa2luh1uI7gwYjaHRDOYmMCOvBDqbV7V310PrA';
     
+    // ATTENDANCE WINDOW: 5:40 AM - 6:15 AM
+    const ATTENDANCE_START = 340; // 5:40 AM in minutes
+    const ATTENDANCE_END = 375;   // 6:15 AM in minutes
+    
     function getWebAppUrl() {
       return 'https://script.google.com/macros/s/' + SCRIPT_ID + '/exec';
     }
@@ -459,8 +419,7 @@
     var isUsingFallback = false;
     var scannerStartAttempts = 0;
     var maxScannerAttempts = 3;
-    // DEFAULT: BACK CAMERA (better for QR scanning)
-    var currentFacingMode = 'environment'; // 'environment' = back, 'user' = front
+    var currentFacingMode = 'environment';
 
     // ========================================
     // DOM REFS
@@ -480,9 +439,6 @@
     var attendanceStatusEl = document.getElementById('attendanceStatus');
     var readerContainer = document.getElementById('reader-container');
     var scanOverlay = document.getElementById('scan-overlay');
-    var manualLRN = document.getElementById('manualLRN');
-    var manualSubmitBtn = document.getElementById('manualSubmitBtn');
-    var testQRBtn = document.getElementById('testQRBtn');
 
     // ========================================
     // DETECT DEVICE TYPE
@@ -646,12 +602,10 @@
     }
 
     function getAttendanceStatus(totalMinutes) {
-      var START_WINDOW = 355;
-      var END_WINDOW = 375;
-      
-      if (totalMinutes < START_WINDOW) {
-        return { status: 'EARLY', message: '⏰ Too early!', class: 'early' };
-      } else if (totalMinutes >= START_WINDOW && totalMinutes <= END_WINDOW) {
+      // Attendance window: 5:40 AM (340) to 6:15 AM (375)
+      if (totalMinutes < ATTENDANCE_START) {
+        return { status: 'EARLY', message: '⏰ Too early! (5:40 AM start)', class: 'early' };
+      } else if (totalMinutes >= ATTENDANCE_START && totalMinutes <= ATTENDANCE_END) {
         return { status: 'P', message: '✓ On Time', class: 'on-time' };
       } else {
         return { status: 'L', message: '⏰ LATE', class: 'late' };
@@ -679,7 +633,7 @@
       
       if (data.status === 'EARLY') {
         statusClass = 'early';
-        statusTextVal = '⏰ Too Early';
+        statusTextVal = '⏰ Too Early (5:40 AM start)';
       } else if (data.status === 'L') {
         statusClass = 'late';
         statusTextVal = '⏰ LATE';
@@ -759,7 +713,6 @@
       
       switchCameraBtn.innerHTML = '<i class="fas ' + switchIcon + '"></i> ' + switchText;
       
-      // Update video mirroring for front camera
       var videoEl = document.querySelector('#reader video');
       if (videoEl) {
         if (isFront) {
@@ -793,22 +746,9 @@
         setTimeout(startModernScanner, 300);
       };
       script.onerror = function() {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to load QR library. Using manual entry.', 'error');
-        showManualEntryMode();
+        updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to load QR library. Please refresh.', 'error');
       };
       document.head.appendChild(script);
-    }
-
-    function showManualEntryMode() {
-      startBtn.classList.add('hidden');
-      stopBtn.classList.add('hidden');
-      cameraControls.classList.remove('hidden');
-      updateStatus('<i class="fas fa-info-circle"></i> Using manual entry mode. Enter LRN below.', 'info');
-      updateText('📝 Enter LRN manually');
-      scanOverlay.classList.remove('active');
-      
-      document.querySelector('.manual-input').style.borderColor = '#28a745';
-      document.querySelector('.manual-input').style.borderWidth = '2px';
     }
 
     function startModernScanner() {
@@ -835,7 +775,6 @@
         html5QrCode = new Html5Qrcode("reader");
         scanOverlay.classList.add('active');
         
-        // Use current camera mode (default: back camera - 'environment')
         var facingMode = currentFacingMode || 'environment';
         updateCameraIndicator();
         
@@ -871,7 +810,10 @@
             updateStatus('<i class="fas fa-redo"></i> Retry ' + scannerStartAttempts + '/' + maxScannerAttempts + '...', 'warning');
             setTimeout(startScannerManually, 1000);
           } else {
-            startFallbackScanner();
+            updateStatus('<i class="fas fa-exclamation-circle"></i> Camera failed. Please refresh and try again.', 'error');
+            updateText('❌ Camera error');
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
           }
         });
       } catch (err) {
@@ -880,7 +822,9 @@
           updateStatus('<i class="fas fa-redo"></i> Retry ' + scannerStartAttempts + '/' + maxScannerAttempts + '...', 'warning');
           setTimeout(startScannerManually, 1000);
         } else {
-          startFallbackScanner();
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start. Please refresh.', 'error');
+          startBtn.disabled = false;
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
         }
       }
     }
@@ -889,9 +833,7 @@
     // SWITCH CAMERA - TOGGLE FRONT/BACK
     // ========================================
     function switchCamera() {
-      // Allow switching even if not scanning (will start scanner)
       if (!isScanning && !scannerInitialized) {
-        // Toggle camera mode
         currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
         var cameraName = (currentFacingMode === 'user') ? 'Front' : 'Back';
         updateStatus('<i class="fas fa-info-circle"></i> Starting scanner with ' + cameraName + ' camera...', 'info');
@@ -900,14 +842,12 @@
         return;
       }
       
-      // Toggle between front ('user') and back ('environment')
       currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
       
       var cameraName = (currentFacingMode === 'user') ? 'Front' : 'Back';
       updateStatus('<i class="fas fa-sync-alt fa-spin"></i> Switching to ' + cameraName + ' camera...', 'info');
       updateCameraIndicator();
       
-      // Stop and restart scanner with new camera
       if (html5QrCode && isScanning) {
         html5QrCode.stop().then(function() {
           isScanning = false;
@@ -982,90 +922,6 @@
         updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to initialize: ' + err.message, 'error');
         updateText('❌ Initialization error');
       }
-    }
-
-    // ========================================
-    // FALLBACK SCANNER
-    // ========================================
-    function startFallbackScanner() {
-      isUsingFallback = true;
-      updateStatus('<i class="fas fa-info-circle"></i> Using fallback mode. Please use manual entry.', 'warning');
-      updateText('📝 Use the manual entry below');
-      
-      startBtn.classList.add('hidden');
-      stopBtn.classList.add('hidden');
-      cameraControls.classList.remove('hidden');
-      
-      try {
-        var video = document.createElement('video');
-        video.setAttribute('autoplay', '');
-        video.setAttribute('playsinline', '');
-        video.style.width = '100%';
-        video.style.height = 'auto';
-        
-        var readerEl = document.getElementById('reader');
-        readerEl.innerHTML = '';
-        readerEl.appendChild(video);
-        
-        var facingMode = currentFacingMode || 'environment';
-        
-        if (navigator.getUserMedia) {
-          navigator.getUserMedia(
-            { video: { facingMode: facingMode } },
-            function(stream) {
-              videoStream = stream;
-              video.srcObject = stream;
-              video.play();
-              scanOverlay.classList.add('active');
-              var cameraName = (facingMode === 'user') ? 'FRONT' : 'BACK';
-              updateStatus('<i class="fas fa-camera"></i> ' + cameraName + ' camera active.', 'info');
-              updateText('📷 Camera is on');
-              if (facingMode === 'user') {
-                video.style.transform = 'scaleX(-1)';
-              }
-            },
-            function(err) {
-              updateStatus('<i class="fas fa-exclamation-circle"></i> Camera unavailable. Use manual entry.', 'error');
-              updateText('📝 Enter LRN manually below');
-              scanOverlay.classList.remove('active');
-              showManualEntryMode();
-            }
-          );
-        } else if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          navigator.mediaDevices.getUserMedia({ video: { facingMode: facingMode } })
-            .then(function(stream) {
-              videoStream = stream;
-              video.srcObject = stream;
-              video.play();
-              scanOverlay.classList.add('active');
-              var cameraName = (facingMode === 'user') ? 'FRONT' : 'BACK';
-              updateStatus('<i class="fas fa-camera"></i> ' + cameraName + ' camera active.', 'info');
-              updateText('📷 Camera is on');
-              if (facingMode === 'user') {
-                video.style.transform = 'scaleX(-1)';
-              }
-            })
-            .catch(function(err) {
-              updateStatus('<i class="fas fa-exclamation-circle"></i> Camera unavailable. Use manual entry.', 'error');
-              updateText('📝 Enter LRN manually below');
-              scanOverlay.classList.remove('active');
-              showManualEntryMode();
-            });
-        } else {
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not supported. Use manual entry.', 'error');
-          updateText('📝 Enter LRN manually below');
-          scanOverlay.classList.remove('active');
-          showManualEntryMode();
-        }
-      } catch(e) {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Camera not available. Use manual entry.', 'error');
-        updateText('📝 Enter LRN manually');
-        scanOverlay.classList.remove('active');
-        showManualEntryMode();
-      }
-      
-      startBtn.disabled = false;
-      startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
     }
 
     function stopScanner() {
@@ -1153,7 +1009,7 @@
       if (serverDateTime && serverDateTime.status) {
         if (serverDateTime.status === 'EARLY') {
           status = 'E';
-          statusDisplay = 'Too Early';
+          statusDisplay = 'Too Early (5:40 AM start)';
         } else if (serverDateTime.status === 'L') {
           status = 'L';
           statusDisplay = 'Late';
@@ -1192,13 +1048,11 @@
             
           } catch(e) {
             console.warn('Error sending to parent:', e.message);
-            showSendStatus('⚠️ Could not send to form. Copy the data below.', 'warning');
-            copyToClipboard(lrn, finalEmail);
+            showSendStatus('⚠️ Could not send to form. Please try again.', 'warning');
             setTimeout(function() { isProcessing = false; }, 1500);
           }
         } else {
-          showSendStatus('⚠️ No parent window. Copy the data below.', 'warning');
-          copyToClipboard(lrn, finalEmail);
+          showSendStatus('⚠️ No parent window found. Please use the attendance form.', 'warning');
           setTimeout(function() { isProcessing = false; }, 1500);
         }
       });
@@ -1206,42 +1060,6 @@
 
     function onScanError(errorMessage) {
       // Silent
-    }
-
-    // ========================================
-    // MANUAL LRN SUBMISSION
-    // ========================================
-    function submitManualLRN() {
-      var lrn = manualLRN.value.trim();
-      if (!lrn) {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Please enter an LRN.', 'warning');
-        return;
-      }
-      
-      if (!/^\d{12}$/.test(lrn)) {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> LRN must be 12 digits.', 'error');
-        return;
-      }
-      
-      processScannedData(lrn);
-      manualLRN.value = '';
-    }
-
-    // ========================================
-    // TEST QR GENERATION
-    // ========================================
-    function generateTestQR() {
-      var testLRN = '123456789012';
-      var testEmail = 'test@example.com';
-      var testData = testEmail + '|' + testLRN;
-      
-      resultDiv.innerHTML = '<div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">' +
-          '<i class="fas fa-info-circle"></i> Test QR Data: <strong>' + testData + '</strong><br>' +
-          '<span style="font-size:11px;">Copy this and paste in the LRN field above, or scan with your device.</span>' +
-        '</div>';
-      
-      manualLRN.value = '123456789012';
-      updateStatus('<i class="fas fa-check-circle"></i> Test LRN generated! Click "Submit LRN" to test.', 'success');
     }
 
     // ========================================
@@ -1299,56 +1117,12 @@
       }
     }
 
-    function copyToClipboard(lrn, email) {
-      var text = email + '|' + lrn;
-      
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(function() {
-          resultDiv.innerHTML += '<div style="margin-top:10px;padding:10px;background:#d4edda;border-radius:8px;font-size:13px;">' +
-              '<strong>Copied:</strong> ' + text +
-            '</div>';
-          updateText('📋 Copied to clipboard');
-        }).catch(function() {
-          fallbackCopy(text);
-        });
-      } else {
-        fallbackCopy(text);
-      }
-    }
-
-    function fallbackCopy(text) {
-      resultDiv.innerHTML += '<div style="margin-top:10px;padding:10px;background:#fff3cd;border-radius:8px;font-size:13px;">' +
-          '<strong>Data:</strong> ' + text +
-        '</div>';
-      updateText('📋 Copy the data above');
-      
-      var textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        updateText('📋 Copied to clipboard (manual method)');
-      } catch(e) {}
-      document.body.removeChild(textarea);
-    }
-
     // ========================================
     // EVENT LISTENERS
     // ========================================
     startBtn.addEventListener('click', startScannerManually);
     stopBtn.addEventListener('click', stopScanner);
     switchCameraBtn.addEventListener('click', switchCamera);
-    manualSubmitBtn.addEventListener('click', submitManualLRN);
-    testQRBtn.addEventListener('click', generateTestQR);
-
-    manualLRN.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        submitManualLRN();
-      }
-    });
 
     // ========================================
     // START ON PAGE LOAD
@@ -1357,7 +1131,6 @@
       checkBrowserCompatibility();
       loadServerDateTime();
       
-      // DEFAULT: BACK CAMERA (environment) for better QR scanning
       currentFacingMode = 'environment';
       updateCameraIndicator();
       
