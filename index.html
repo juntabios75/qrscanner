@@ -6,8 +6,6 @@
   <title>MBHS - QR Attendance Scanner</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <!-- Load QR Scanner Library -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -64,8 +62,8 @@
       background: #000;
       border-radius: 10px;
       overflow: hidden;
-      min-height: 220px;
-      max-height: 280px;
+      min-height: 250px;
+      max-height: 300px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -87,8 +85,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 150px;
-      height: 150px;
+      width: 160px;
+      height: 160px;
       border: 2px solid rgba(108, 92, 231, 0.8);
       border-radius: 10px;
       box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.3);
@@ -127,8 +125,6 @@
       touch-action: manipulation;
       min-height: 30px;
       justify-content: center;
-      user-select: none;
-      -webkit-user-select: none;
     }
     .btn-primary { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; }
     .btn-primary:active { transform: scale(0.95); }
@@ -269,16 +265,16 @@
     
     @media (max-width: 500px) {
       .container { padding: 8px 10px; }
-      #reader-container { min-height: 180px; max-height: 220px; }
-      #scan-overlay { width: 120px; height: 120px; }
+      #reader-container { min-height: 200px; max-height: 240px; }
+      #scan-overlay { width: 130px; height: 130px; }
       .btn { font-size: 10px; padding: 4px 10px; min-height: 26px; }
       .btn-group .btn { min-width: 50px; }
     }
     
     @media (max-height: 700px) {
       .container { padding: 6px 8px; }
-      #reader-container { min-height: 150px; max-height: 180px; }
-      #scan-overlay { width: 100px; height: 100px; }
+      #reader-container { min-height: 160px; max-height: 190px; }
+      #scan-overlay { width: 110px; height: 110px; }
       .server-datetime { padding: 3px 6px; font-size: 9px; margin: 0 0 4px 0; }
       .btn { font-size: 9px; padding: 3px 8px; min-height: 22px; }
       .btn-group { gap: 3px; margin-top: 4px; }
@@ -328,7 +324,7 @@
         <i class="fas fa-camera"></i> Back
       </span>
       <button class="btn btn-switch-camera" id="switchCameraBtn">
-        <i class="fas fa-sync-alt"></i> Switch to Front
+        <i class="fas fa-sync-alt"></i> Switch
       </button>
     </div>
     
@@ -356,6 +352,9 @@
     </div>
   </div>
 
+  <!-- Load QR Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  
   <script>
     // ========================================
     // CONFIGURATION
@@ -364,7 +363,6 @@
     var isScanning = false;
     var scanCount = 0;
     var isProcessing = false;
-    var serverDateTime = {};
     var scannerInitialized = false;
     var currentFacingMode = 'environment';
 
@@ -451,6 +449,7 @@
     // QR SCANNER
     // ========================================
     function startScanner() {
+      // Clean up existing scanner
       if (html5QrCode) {
         try {
           html5QrCode.stop().then(function() {
@@ -474,6 +473,7 @@
           return;
         }
         
+        // Create scanner instance
         html5QrCode = new Html5Qrcode("reader");
         scanOverlay.classList.add('active');
         
@@ -481,11 +481,12 @@
         updateCameraIndicator();
         
         var config = {
-          fps: 10,
+          fps: 15,
           qrbox: { width: 180, height: 180 },
           aspectRatio: 1.0
         };
 
+        // Start scanning
         html5QrCode.start(
           { facingMode: facingMode },
           config,
@@ -506,16 +507,18 @@
           updateCameraIndicator();
         }).catch(function(err) {
           console.warn('Scanner failed:', err.message);
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera failed: ' + err.message, 'error');
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera error: ' + err.message, 'error');
           statusText.textContent = '❌ Camera error';
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
+          scanOverlay.classList.remove('active');
         });
       } catch (err) {
         console.warn('Scanner error:', err.message);
         updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start: ' + err.message, 'error');
         startBtn.disabled = false;
         startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
+        scanOverlay.classList.remove('active');
       }
     }
 
@@ -584,7 +587,6 @@
       
       var email = '';
       var lrn = '';
-      var studentName = 'Student';
       
       if (decodedText.indexOf('|') > -1) {
         var parts = decodedText.split('|');
@@ -617,24 +619,9 @@
         statusDisplay = 'Late';
       }
 
-      // Look up student name
-      var studentNameDisplay = 'Student';
-      var finalEmail = email;
+      showScannedResult(lrn, email, statusDisplay);
       
-      // Try to get student info from parent window
-      if (window.opener && !window.opener.closed) {
-        try {
-          // Try to get student name from parent
-          var studentInfo = window.opener.document.getElementById('lrn');
-          if (studentInfo) {
-            studentNameDisplay = 'Student';
-          }
-        } catch(e) {}
-      }
-      
-      showScannedResult(studentNameDisplay, lrn, finalEmail, statusDisplay);
-      
-      var dataToSend = finalEmail + '|' + lrn;
+      var dataToSend = email + '|' + lrn;
       
       if (window.opener && !window.opener.closed) {
         try {
@@ -675,7 +662,7 @@
       }
     }
 
-    function showScannedResult(name, lrn, email, statusDisplay) {
+    function showScannedResult(lrn, email, statusDisplay) {
       var html = '<div class="scanned-result">' +
           '<div style="display: flex; justify-content: space-between; align-items: center;">' +
             '<div>' +
@@ -712,19 +699,22 @@
       currentFacingMode = 'environment';
       updateCameraIndicator();
       
-      // Check if library is loaded
-      if (typeof Html5Qrcode === 'undefined') {
-        updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Please refresh.', 'warning');
-        statusText.textContent = '⚠️ Library not loaded';
-      } else {
-        updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start" to begin.', 'info');
-        statusText.textContent = '📱 Tap Start Camera';
-        
-        // Auto-start after a short delay
-        setTimeout(function() {
-          startScanner();
-        }, 1000);
+      // Wait for library to load then start
+      function checkLibraryAndStart() {
+        if (typeof Html5Qrcode !== 'undefined') {
+          updateStatus('<i class="fas fa-info-circle"></i> Ready. Starting camera...', 'info');
+          statusText.textContent = '📱 Starting camera...';
+          setTimeout(function() {
+            startScanner();
+          }, 500);
+        } else {
+          // Wait and check again
+          setTimeout(checkLibraryAndStart, 300);
+        }
       }
+      
+      // Start the check
+      setTimeout(checkLibraryAndStart, 500);
     });
 
     window.addEventListener('beforeunload', function() {
