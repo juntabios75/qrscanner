@@ -387,6 +387,7 @@
     var serverTimeEl = document.getElementById('serverTime');
     var attendanceStatusEl = document.getElementById('attendanceStatus');
     var scanOverlay = document.getElementById('scan-overlay');
+    var readerContainer = document.getElementById('reader-container');
 
     // ========================================
     // SERVER DATE/TIME
@@ -623,9 +624,12 @@
       
       var dataToSend = email + '|' + lrn;
       
-      if (window.opener && !window.opener.closed) {
+      // Send to parent window (if in iframe) or opener (if popup)
+      var targetWindow = window.parent !== window ? window.parent : window.opener;
+      
+      if (targetWindow && targetWindow !== window) {
         try {
-          window.opener.postMessage({
+          targetWindow.postMessage({
             type: 'LRN_SCANNED',
             lrn: dataToSend
           }, '*');
