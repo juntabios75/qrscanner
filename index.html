@@ -15,27 +15,63 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 10px;
       touch-action: manipulation;
     }
     .container {
       background: white;
-      border-radius: 20px;
-      padding: 25px;
-      max-width: 550px;
+      border-radius: 16px;
+      padding: 12px 16px;
+      max-width: 500px;
       width: 100%;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      max-height: 98vh;
+      max-height: 99vh;
       overflow-y: auto;
     }
     
+    /* Compact Header */
+    .header { text-align: center; margin-bottom: 6px; }
+    .header i { font-size: 22px; color: #6c5ce7; margin-bottom: 2px; }
+    .header h2 { color: #2c3e50; font-size: 15px; font-weight: 700; }
+    .header p { color: #7f8c8d; font-size: 10px; }
+    
+    /* Compact Server DateTime */
+    .server-datetime {
+      background: #f0f2f5;
+      padding: 5px 10px;
+      border-radius: 6px;
+      margin: 4px 0 6px 0;
+      text-align: center;
+      font-size: 10px;
+      color: #2c3e50;
+      border: 1px solid #e4e6eb;
+      line-height: 1.4;
+    }
+    .server-datetime i { color: #6c5ce7; margin-right: 4px; font-size: 10px; }
+    .server-datetime .date { font-weight: 600; }
+    .server-datetime .time { font-weight: 600; color: #6c5ce7; }
+    
+    .attendance-status {
+      display: inline-block;
+      padding: 1px 10px;
+      border-radius: 12px;
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .attendance-status.on-time { background: #d4edda; color: #155724; }
+    .attendance-status.late { background: #fff3cd; color: #856404; }
+    .attendance-status.early { background: #d1ecf1; color: #0c5460; }
+    
+    /* Compact Scanner */
     #reader-container {
       width: 100%;
       position: relative;
       background: #000;
-      border-radius: 12px;
+      border-radius: 10px;
       overflow: hidden;
-      min-height: 300px;
+      min-height: 220px;
+      max-height: 280px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -57,10 +93,10 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 200px;
-      height: 200px;
-      border: 3px solid rgba(108, 92, 231, 0.8);
-      border-radius: 12px;
+      width: 150px;
+      height: 150px;
+      border: 2px solid rgba(108, 92, 231, 0.8);
+      border-radius: 10px;
       box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.3);
       pointer-events: none;
       display: none;
@@ -70,32 +106,33 @@
     }
     #scan-overlay .corner {
       position: absolute;
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       border-color: #6c5ce7;
       border-style: solid;
       border-width: 0;
     }
-    #scan-overlay .corner.tl { top: -3px; left: -3px; border-top-width: 4px; border-left-width: 4px; border-radius: 4px 0 0 0; }
-    #scan-overlay .corner.tr { top: -3px; right: -3px; border-top-width: 4px; border-right-width: 4px; border-radius: 0 4px 0 0; }
-    #scan-overlay .corner.bl { bottom: -3px; left: -3px; border-bottom-width: 4px; border-left-width: 4px; border-radius: 0 0 0 4px; }
-    #scan-overlay .corner.br { bottom: -3px; right: -3px; border-bottom-width: 4px; border-right-width: 4px; border-radius: 0 0 4px 0; }
+    #scan-overlay .corner.tl { top: -2px; left: -2px; border-top-width: 3px; border-left-width: 3px; border-radius: 3px 0 0 0; }
+    #scan-overlay .corner.tr { top: -2px; right: -2px; border-top-width: 3px; border-right-width: 3px; border-radius: 0 3px 0 0; }
+    #scan-overlay .corner.bl { bottom: -2px; left: -2px; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 3px; }
+    #scan-overlay .corner.br { bottom: -2px; right: -2px; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 3px 0; }
     
-    #result { margin-top: 12px; text-align: center; min-height: 40px; max-height: 300px; overflow-y: auto; }
+    #result { margin-top: 6px; text-align: center; min-height: 30px; max-height: 150px; overflow-y: auto; font-size: 11px; }
     
+    /* Compact Buttons */
     .btn {
-      padding: 12px 20px;
+      padding: 6px 12px;
       border: none;
-      border-radius: 50px;
-      font-size: 15px;
+      border-radius: 30px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 5px;
       touch-action: manipulation;
-      min-height: 48px;
+      min-height: 30px;
       justify-content: center;
       user-select: none;
       -webkit-user-select: none;
@@ -116,120 +153,94 @@
     
     .btn-group { 
       display: flex; 
-      gap: 8px; 
-      margin-top: 12px; 
+      gap: 5px; 
+      margin-top: 6px; 
       justify-content: center; 
       flex-wrap: wrap; 
     }
-    .btn-group .btn { flex: 1; min-width: 100px; }
+    .btn-group .btn { flex: 1; min-width: 60px; }
     
     .status-box {
-      padding: 10px 14px;
-      border-radius: 10px;
-      margin: 8px 0;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin: 4px 0;
       text-align: center;
-      font-size: 13px;
+      font-size: 10px;
     }
-    .status-success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
-    .status-error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
-    .status-info { background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8; }
-    .status-warning { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+    .status-success { background: #d4edda; color: #155724; border-left: 3px solid #28a745; }
+    .status-error { background: #f8d7da; color: #721c24; border-left: 3px solid #dc3545; }
+    .status-info { background: #d1ecf1; color: #0c5460; border-left: 3px solid #17a2b8; }
+    .status-warning { background: #fff3cd; color: #856404; border-left: 3px solid #ffc107; }
     
     .scanned-result {
       background: #d4edda;
-      padding: 12px;
-      border-radius: 10px;
-      border-left: 4px solid #28a745;
-      margin-bottom: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border-left: 3px solid #28a745;
+      margin-bottom: 4px;
       animation: slideIn 0.3s ease;
     }
     .scanned-result .info-row {
       display: flex;
       justify-content: space-between;
-      padding: 3px 0;
-      font-size: 13px;
+      padding: 2px 0;
+      font-size: 10px;
       border-bottom: 1px solid rgba(0,0,0,0.05);
     }
     .scanned-result .info-row:last-child { border-bottom: none; }
-    .scanned-result .label { font-weight: 600; color: #2c3e50; }
-    .scanned-result .value { color: #155724; font-weight: 500; }
+    .scanned-result .label { font-weight: 600; color: #2c3e50; font-size: 10px; }
+    .scanned-result .value { color: #155724; font-weight: 500; font-size: 10px; }
     
     .hidden { display: none !important; }
     
     .counter {
       text-align: center;
-      font-size: 13px;
+      font-size: 10px;
       color: #666;
-      margin-top: 8px;
-      padding: 6px;
+      margin-top: 4px;
+      padding: 3px;
       background: #f8f9fa;
-      border-radius: 8px;
+      border-radius: 6px;
     }
     .counter span { font-weight: 700; color: #6c5ce7; }
     
     .scan-animation {
       display: inline-block;
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: #2ecc71;
       animation: pulse 1.5s ease-in-out infinite;
-      margin-right: 6px;
+      margin-right: 4px;
     }
     
     .status-text {
       text-align: center;
-      font-size: 12px;
+      font-size: 9px;
       color: #95a5a6;
-      margin-top: 8px;
+      margin-top: 4px;
     }
     
     .send-status {
-      margin-top: 8px;
-      padding: 8px;
-      border-radius: 8px;
-      font-size: 12px;
+      margin-top: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
       text-align: center;
     }
     .send-status.success { background: #d4edda; color: #155724; }
     .send-status.error { background: #f8d7da; color: #721c24; }
     .send-status.sending { background: #d1ecf1; color: #0c5460; }
     
-    .server-datetime {
-      background: #f0f2f5;
-      padding: 10px 14px;
-      border-radius: 8px;
-      margin: 10px 0;
-      text-align: center;
-      font-size: 13px;
-      color: #2c3e50;
-      border: 1px solid #e4e6eb;
-    }
-    .server-datetime i { color: #6c5ce7; margin-right: 6px; }
-    .server-datetime .date { font-weight: 600; }
-    .server-datetime .time { font-weight: 600; color: #6c5ce7; }
-    
-    .attendance-status {
-      display: inline-block;
-      padding: 4px 14px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-    .attendance-status.on-time { background: #d4edda; color: #155724; }
-    .attendance-status.late { background: #fff3cd; color: #856404; }
-    .attendance-status.early { background: #d1ecf1; color: #0c5460; }
-    
     .camera-controls {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      margin-top: 8px;
-      padding: 8px;
+      gap: 6px;
+      margin-top: 4px;
+      padding: 4px 6px;
       background: #f8f9fa;
-      border-radius: 10px;
+      border-radius: 6px;
       flex-wrap: wrap;
     }
     .camera-controls.hidden {
@@ -239,19 +250,19 @@
     .camera-indicator {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 10px;
       font-weight: 600;
     }
     .camera-indicator.front { background: #d1ecf1; color: #0c5460; }
     .camera-indicator.back { background: #d4edda; color: #155724; }
     
     .camera-controls .btn {
-      padding: 6px 16px;
-      font-size: 13px;
-      min-height: 36px;
+      padding: 3px 10px;
+      font-size: 10px;
+      min-height: 24px;
     }
     
     .btn-switch-camera {
@@ -259,10 +270,9 @@
       color: white;
     }
     .btn-switch-camera:active { transform: scale(0.95); }
-    .btn-switch-camera:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(23,162,184,0.3); }
     
     @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-10px); }
+      from { opacity: 0; transform: translateY(-5px); }
       to { opacity: 1; transform: translateY(0); }
     }
     
@@ -273,29 +283,57 @@
     }
     
     @media (max-width: 500px) {
-      .container { padding: 15px; }
-      .btn { font-size: 14px; }
-      .btn-group { flex-direction: column; }
-      .btn-group .btn { flex: none; width: 100%; }
-      #scan-overlay { width: 150px; height: 150px; }
-      .camera-controls { flex-direction: column; }
+      .container { padding: 8px 10px; }
+      #reader-container { min-height: 180px; max-height: 220px; }
+      #scan-overlay { width: 120px; height: 120px; }
+      .header h2 { font-size: 13px; }
+      .btn { font-size: 10px; padding: 4px 10px; min-height: 26px; }
+      .btn-group .btn { min-width: 50px; }
+    }
+    
+    @media (max-height: 700px) {
+      .container { padding: 6px 8px; }
+      #reader-container { min-height: 150px; max-height: 180px; }
+      #scan-overlay { width: 100px; height: 100px; }
+      .header { margin-bottom: 3px; }
+      .header i { font-size: 18px; }
+      .header h2 { font-size: 12px; }
+      .header p { font-size: 9px; }
+      .server-datetime { padding: 3px 6px; font-size: 9px; margin: 3px 0 4px 0; }
+      .btn { font-size: 9px; padding: 3px 8px; min-height: 22px; }
+      .btn-group { gap: 3px; margin-top: 4px; }
+      .camera-controls { padding: 3px 4px; }
+      .camera-indicator { font-size: 9px; padding: 2px 8px; }
+      .camera-controls .btn { font-size: 9px; padding: 2px 8px; min-height: 20px; }
+      .counter { font-size: 9px; }
+      .status-text { font-size: 8px; }
+      .status-box { font-size: 9px; padding: 3px 6px; }
+      #result { font-size: 10px; min-height: 25px; max-height: 100px; }
+      .scanned-result .info-row { font-size: 9px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     
+    <!-- Compact Header -->
+    <div class="header">
+      <i class="fas fa-qrcode"></i>
+      <h2>QR Attendance Scanner</h2>
+      <p>Scan QR code to auto-fill attendance form</p>
+    </div>
+    
+    <!-- Compact Server DateTime -->
     <div class="server-datetime" id="serverDateTime">
       <i class="fas fa-calendar-day"></i>
       <span class="date" id="serverDate">Loading date...</span>
-      <span style="margin: 0 6px;">|</span>
+      <span style="margin: 0 4px;">|</span>
       <i class="fas fa-clock"></i>
       <span class="time" id="serverTime">Loading time...</span>
       <br>
       <span class="attendance-status on-time" id="attendanceStatus">✓ On Time</span>
-      <br>
-      <span style="font-size: 11px; color: #6c757d;">
-        <i class="fas fa-clock"></i> Attendance: 5:40 AM - 6:15 AM
+      <span style="font-size: 8px; color: #6c757d; margin-left: 6px;">
+        <i class="fas fa-clock"></i> 5:40 AM - 6:15 AM
       </span>
     </div>
 
@@ -316,7 +354,7 @@
     <!-- Camera Controls -->
     <div class="camera-controls" id="cameraControls">
       <span class="camera-indicator back" id="cameraIndicator">
-        <i class="fas fa-camera"></i> Back Camera
+        <i class="fas fa-camera"></i> Back
       </span>
       <button class="btn btn-switch-camera" id="switchCameraBtn">
         <i class="fas fa-sync-alt"></i> Switch to Front
@@ -328,7 +366,7 @@
 
     <div class="btn-group">
       <button class="btn btn-primary" id="startBtn">
-        <i class="fas fa-camera"></i> Start Camera
+        <i class="fas fa-camera"></i> Start
       </button>
       <button class="btn btn-danger hidden" id="stopBtn">
         <i class="fas fa-stop"></i> Stop
@@ -512,7 +550,7 @@
       
       if (data.status === 'EARLY') {
         statusClass = 'early';
-        statusTextVal = '⏰ Too Early (5:40 AM start)';
+        statusTextVal = '⏰ Too Early';
       } else if (data.status === 'L') {
         statusClass = 'late';
         statusTextVal = '⏰ LATE';
@@ -557,21 +595,21 @@
       var html = '<div class="scanned-result">' +
           '<div style="display: flex; justify-content: space-between; align-items: center;">' +
             '<div>' +
-              '<i class="fas fa-check-circle" style="color: #28a745; font-size: 16px;"></i>' +
-              '<span style="font-weight: 600; margin-left: 6px; font-size: 14px;">QR Code detected!</span>' +
+              '<i class="fas fa-check-circle" style="color: #28a745; font-size: 12px;"></i>' +
+              '<span style="font-weight: 600; margin-left: 4px; font-size: 11px;">QR Detected!</span>' +
             '</div>' +
-            '<span style="font-size: 11px; color: #155724;">' + new Date().toLocaleTimeString() + '</span>' +
+            '<span style="font-size: 9px; color: #155724;">' + new Date().toLocaleTimeString() + '</span>' +
           '</div>' +
           '<div class="info-row"><span class="label">Name:</span><span class="value">' + name + '</span></div>' +
           '<div class="info-row"><span class="label">LRN:</span><span class="value">' + lrn + '</span></div>' +
           '<div class="info-row"><span class="label">Email:</span><span class="value">' + (email || 'N/A') + '</span></div>' +
-          '<div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;">' + statusDisplay + '</span></span></div>' +
+          '<div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:1px 8px;border-radius:12px;font-size:9px;font-weight:600;">' + statusDisplay + '</span></span></div>' +
         '</div>';
       resultDiv.innerHTML = html;
     }
 
     function showReadyMessage() {
-      resultDiv.innerHTML = '<div style="background:#d1ecf1;padding:12px;border-radius:10px;border-left:4px solid #17a2b8;text-align:center;font-size:13px;color:#0c5460;">' +
+      resultDiv.innerHTML = '<div style="background:#d1ecf1;padding:6px 10px;border-radius:6px;border-left:3px solid #17a2b8;text-align:center;font-size:10px;color:#0c5460;">' +
           '<i class="fas fa-camera"></i> Ready for next student. Scan another QR code.' +
         '</div>';
     }
@@ -581,7 +619,7 @@
     // ========================================
     function updateCameraIndicator() {
       var isFront = (currentFacingMode === 'user');
-      var cameraName = isFront ? 'Front Camera' : 'Back Camera';
+      var cameraName = isFront ? 'Front' : 'Back';
       var icon = isFront ? 'fa-user' : 'fa-camera';
       var className = isFront ? 'front' : 'back';
       var switchText = isFront ? 'Switch to Back' : 'Switch to Front';
@@ -621,7 +659,7 @@
       var script = document.createElement('script');
       script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
       script.onload = function() {
-        updateStatus('<i class="fas fa-check-circle"></i> Library loaded. Starting scanner...', 'success');
+        updateStatus('<i class="fas fa-check-circle"></i> Library loaded. Starting...', 'success');
         setTimeout(startModernScanner, 300);
       };
       script.onerror = function() {
@@ -641,7 +679,7 @@
       }
 
       startBtn.disabled = true;
-      startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+      startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
       try {
         var readerElement = document.getElementById('reader');
@@ -659,7 +697,7 @@
         
         var config = {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: { width: 180, height: 180 },
           aspectRatio: 1.0
         };
 
@@ -672,13 +710,13 @@
           isScanning = true;
           scannerInitialized = true;
           var cameraName = (facingMode === 'user') ? 'FRONT' : 'BACK';
-          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' camera active.', 'success');
+          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' active', 'success');
           updateText('🔍 Scanning for QR codes...');
           startBtn.classList.add('hidden');
           stopBtn.classList.remove('hidden');
           cameraControls.classList.remove('hidden');
           startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
           isUsingFallback = false;
           scannerStartAttempts = 0;
           
@@ -689,7 +727,7 @@
             updateStatus('<i class="fas fa-redo"></i> Retry ' + scannerStartAttempts + '/' + maxScannerAttempts + '...', 'warning');
             setTimeout(startScannerManually, 1000);
           } else {
-            updateStatus('<i class="fas fa-exclamation-circle"></i> Camera failed. Please refresh and try again.', 'error');
+            updateStatus('<i class="fas fa-exclamation-circle"></i> Camera failed. Please refresh.', 'error');
             updateText('❌ Camera error');
             startBtn.disabled = false;
             startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
@@ -715,7 +753,7 @@
       if (!isScanning && !scannerInitialized) {
         currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
         var cameraName = (currentFacingMode === 'user') ? 'Front' : 'Back';
-        updateStatus('<i class="fas fa-info-circle"></i> Starting scanner with ' + cameraName + ' camera...', 'info');
+        updateStatus('<i class="fas fa-info-circle"></i> Starting with ' + cameraName + '...', 'info');
         updateCameraIndicator();
         startScannerManually();
         return;
@@ -724,7 +762,7 @@
       currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
       
       var cameraName = (currentFacingMode === 'user') ? 'Front' : 'Back';
-      updateStatus('<i class="fas fa-sync-alt fa-spin"></i> Switching to ' + cameraName + ' camera...', 'info');
+      updateStatus('<i class="fas fa-sync-alt fa-spin"></i> Switching to ' + cameraName + '...', 'info');
       updateCameraIndicator();
       
       if (html5QrCode && isScanning) {
@@ -770,7 +808,7 @@
         
         var config = {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
+          qrbox: { width: 180, height: 180 },
           aspectRatio: 1.0
         };
 
@@ -783,13 +821,13 @@
           isScanning = true;
           scannerInitialized = true;
           var cameraName = (facingMode === 'user') ? 'FRONT' : 'BACK';
-          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' camera active.', 'success');
+          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' active', 'success');
           updateText('🔍 Scanning for QR codes...');
           startBtn.classList.add('hidden');
           stopBtn.classList.remove('hidden');
           cameraControls.classList.remove('hidden');
           startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
           isUsingFallback = false;
           
           updateCameraIndicator();
@@ -813,7 +851,7 @@
           cameraControls.classList.remove('hidden');
           startBtn.classList.remove('hidden');
           startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
           updateStatus('<i class="fas fa-info-circle"></i> Scanner stopped.', 'info');
           updateText('⏹️ Stopped');
         }).catch(function() {});
@@ -827,13 +865,13 @@
         cameraControls.classList.remove('hidden');
         startBtn.classList.remove('hidden');
         startBtn.disabled = false;
-        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
       } else {
         stopBtn.classList.add('hidden');
         cameraControls.classList.remove('hidden');
         startBtn.classList.remove('hidden');
         startBtn.disabled = false;
-        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
       }
     }
 
@@ -863,20 +901,16 @@
       } else if (/^\d{12}$/.test(decodedText)) {
         lrn = decodedText;
       } else {
-        resultDiv.innerHTML = '<div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">' +
-            '<i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>' +
-            '<div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid QR Code</div>' +
-            '<div style="font-size:11px;color:#721c24;">Please scan a valid attendance QR code.</div>' +
+        resultDiv.innerHTML = '<div style="background:#f8d7da;padding:6px 10px;border-radius:6px;border-left:3px solid #dc3545;font-size:10px;">' +
+            '<i class="fas fa-exclamation-circle" style="color:#dc3545;"></i> Invalid QR Code. Please scan a valid attendance QR.' +
           '</div>';
         isProcessing = false;
         return;
       }
 
       if (!/^\d{12}$/.test(lrn)) {
-        resultDiv.innerHTML = '<div style="background:#f8d7da;padding:12px;border-radius:10px;border-left:4px solid #dc3545;">' +
-            '<i class="fas fa-exclamation-circle" style="color:#dc3545;font-size:16px;"></i>' +
-            '<div style="margin-top:3px;font-weight:600;font-size:13px;">Invalid LRN</div>' +
-            '<div style="font-size:11px;color:#721c24;">LRN must be 12 digits: ' + lrn + '</div>' +
+        resultDiv.innerHTML = '<div style="background:#f8d7da;padding:6px 10px;border-radius:6px;border-left:3px solid #dc3545;font-size:10px;">' +
+            '<i class="fas fa-exclamation-circle" style="color:#dc3545;"></i> Invalid LRN. LRN must be 12 digits: ' + lrn +
           '</div>';
         isProcessing = false;
         return;
@@ -888,7 +922,7 @@
       if (serverDateTime && serverDateTime.status) {
         if (serverDateTime.status === 'EARLY') {
           status = 'E';
-          statusDisplay = 'Too Early (5:40 AM start)';
+          statusDisplay = 'Too Early (5:40 AM)';
         } else if (serverDateTime.status === 'L') {
           status = 'L';
           statusDisplay = 'Late';
@@ -912,7 +946,7 @@
               lrn: dataToSend
             }, '*');
             
-            showSendStatus('✅ Data sent to attendance form!', 'success');
+            showSendStatus('✅ Data sent to form!', 'success');
             updateText('✅ Sent to form - auto-submitting...');
             
             scanCount++;
@@ -931,7 +965,7 @@
             setTimeout(function() { isProcessing = false; }, 1500);
           }
         } else {
-          showSendStatus('⚠️ No parent window found. Please use the attendance form.', 'warning');
+          showSendStatus('⚠️ No parent window found.', 'warning');
           setTimeout(function() { isProcessing = false; }, 1500);
         }
       });
@@ -1013,10 +1047,10 @@
       updateCameraIndicator();
       
       if (typeof Html5Qrcode === 'undefined') {
-        updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Attempting to load...', 'warning');
+        updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Loading...', 'warning');
         loadLibraryAndStart();
       } else {
-        updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start Camera" to begin with BACK camera.', 'info');
+        updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start" to begin.', 'info');
         updateText('📱 Tap Start Camera');
         
         setTimeout(function() {
