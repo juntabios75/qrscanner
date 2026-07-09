@@ -29,18 +29,12 @@
       overflow-y: auto;
     }
     
-    /* Compact Header */
-    .header { text-align: center; margin-bottom: 6px; }
-    .header i { font-size: 22px; color: #6c5ce7; margin-bottom: 2px; }
-    .header h2 { color: #2c3e50; font-size: 15px; font-weight: 700; }
-    .header p { color: #7f8c8d; font-size: 10px; }
-    
     /* Compact Server DateTime */
     .server-datetime {
       background: #f0f2f5;
       padding: 5px 10px;
       border-radius: 6px;
-      margin: 4px 0 6px 0;
+      margin: 0 0 6px 0;
       text-align: center;
       font-size: 10px;
       color: #2c3e50;
@@ -286,7 +280,6 @@
       .container { padding: 8px 10px; }
       #reader-container { min-height: 180px; max-height: 220px; }
       #scan-overlay { width: 120px; height: 120px; }
-      .header h2 { font-size: 13px; }
       .btn { font-size: 10px; padding: 4px 10px; min-height: 26px; }
       .btn-group .btn { min-width: 50px; }
     }
@@ -295,11 +288,7 @@
       .container { padding: 6px 8px; }
       #reader-container { min-height: 150px; max-height: 180px; }
       #scan-overlay { width: 100px; height: 100px; }
-      .header { margin-bottom: 3px; }
-      .header i { font-size: 18px; }
-      .header h2 { font-size: 12px; }
-      .header p { font-size: 9px; }
-      .server-datetime { padding: 3px 6px; font-size: 9px; margin: 3px 0 4px 0; }
+      .server-datetime { padding: 3px 6px; font-size: 9px; margin: 0 0 4px 0; }
       .btn { font-size: 9px; padding: 3px 8px; min-height: 22px; }
       .btn-group { gap: 3px; margin-top: 4px; }
       .camera-controls { padding: 3px 4px; }
@@ -315,7 +304,7 @@
 </head>
 <body>
   <div class="container">
-            
+    
     <!-- Compact Server DateTime -->
     <div class="server-datetime" id="serverDateTime">
       <i class="fas fa-calendar-day"></i>
