@@ -631,12 +631,19 @@
       if (typeof Html5Qrcode !== 'undefined') {
         startModernScanner();
       } else {
+        // Try loading the library first
         loadLibraryAndStart();
       }
     }
 
     function loadLibraryAndStart() {
       updateStatus('<i class="fas fa-spinner fa-spin"></i> Loading QR library...', 'info');
+      
+      // Check if library is already loaded
+      if (typeof Html5Qrcode !== 'undefined') {
+        startModernScanner();
+        return;
+      }
       
       var script = document.createElement('script');
       script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
@@ -646,6 +653,17 @@
       };
       script.onerror = function() {
         updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to load QR library. Please refresh.', 'error');
+        // Try one more time with a different CDN
+        var fallbackScript = document.createElement('script');
+        fallbackScript.src = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        fallbackScript.onload = function() {
+          updateStatus('<i class="fas fa-check-circle"></i> Library loaded. Starting...', 'success');
+          setTimeout(startModernScanner, 300);
+        };
+        fallbackScript.onerror = function() {
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to load QR library. Please refresh.', 'error');
+        };
+        document.head.appendChild(fallbackScript);
       };
       document.head.appendChild(script);
     }
@@ -667,8 +685,11 @@
         var readerElement = document.getElementById('reader');
         readerElement.innerHTML = '';
         
+        // Check if library is available
         if (typeof Html5Qrcode === 'undefined') {
-          throw new Error('Html5Qrcode library not loaded');
+          // Try loading the library again
+          loadLibraryAndStart();
+          return;
         }
         
         html5QrCode = new Html5Qrcode("reader");
@@ -717,6 +738,11 @@
         });
       } catch (err) {
         console.warn('Scanner error:', err.message);
+        // If error is about Html5Qrcode not defined, try loading library
+        if (err.message && err.message.includes('Html5Qrcode')) {
+          loadLibraryAndStart();
+          return;
+        }
         if (scannerStartAttempts < maxScannerAttempts) {
           updateStatus('<i class="fas fa-redo"></i> Retry ' + scannerStartAttempts + '/' + maxScannerAttempts + '...', 'warning');
           setTimeout(startScannerManually, 1000);
@@ -1028,8 +1054,9 @@
       currentFacingMode = 'environment';
       updateCameraIndicator();
       
+      // Check if library is loaded, if not load it
       if (typeof Html5Qrcode === 'undefined') {
-        updateStatus('<i class="fas fa-exclamation-triangle"></i> QR library not loaded. Loading...', 'warning');
+        updateStatus('<i class="fas fa-exclamation-triangle"></i> Loading QR library...', 'warning');
         loadLibraryAndStart();
       } else {
         updateStatus('<i class="fas fa-info-circle"></i> Ready. Tap "Start" to begin.', 'info');
@@ -1037,7 +1064,7 @@
         
         setTimeout(function() {
           startScannerManually();
-        }, 1500);
+        }, 1000);
       }
     });
 
