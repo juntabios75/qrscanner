@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
+    /* ... your existing styles ... */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', sans-serif;
@@ -447,6 +448,21 @@
     }
 
     // ========================================
+    // CHECK CAMERA PERMISSIONS
+    // ========================================
+    function checkCameraPermissions() {
+      return navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function(stream) {
+          stream.getTracks().forEach(function(track) { track.stop(); });
+          return true;
+        })
+        .catch(function(err) {
+          console.error('Camera permission error:', err);
+          return false;
+        });
+    }
+
+    // ========================================
     // QR SCANNER
     // ========================================
     function startScanner() {
@@ -463,64 +479,81 @@
       startBtn.disabled = true;
       startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-      try {
-        var readerElement = document.getElementById('reader');
-        readerElement.innerHTML = '';
-        
-        if (typeof Html5Qrcode === 'undefined') {
-          updateStatus('<i class="fas fa-exclamation-circle"></i> QR library not loaded. Please refresh.', 'error');
+      // Check if library is loaded
+      if (typeof Html5Qrcode === 'undefined') {
+        updateStatus('<i class="fas fa-exclamation-circle"></i> QR library not loaded. Please refresh.', 'error');
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
+        return;
+      }
+
+      // Check camera permissions first
+      checkCameraPermissions().then(function(hasPermission) {
+        if (!hasPermission) {
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera access denied. Please allow camera access and try again.', 'error');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
           return;
         }
-        
-        // Create scanner instance
-        html5QrCode = new Html5Qrcode("reader");
-        scanOverlay.classList.add('active');
-        
-        var facingMode = currentFacingMode || 'environment';
-        updateCameraIndicator();
-        
-        var config = {
-          fps: 15,
-          qrbox: { width: 180, height: 180 },
-          aspectRatio: 1.0
-        };
 
-        // Start scanning
-        html5QrCode.start(
-          { facingMode: facingMode },
-          config,
-          onScanSuccess,
-          onScanError
-        ).then(function() {
-          isScanning = true;
-          scannerInitialized = true;
-          var cameraName = (facingMode === 'user') ? 'FRONT' : 'BACK';
-          updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' active', 'success');
-          statusText.textContent = '🔍 Scanning for QR codes...';
-          startBtn.classList.add('hidden');
-          stopBtn.classList.remove('hidden');
-          cameraControls.classList.remove('hidden');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
+        try {
+          var readerElement = document.getElementById('reader');
+          readerElement.innerHTML = '';
           
+          // Create scanner instance
+          html5QrCode = new Html5Qrcode("reader");
+          scanOverlay.classList.add('active');
+          
+          var facingMode = currentFacingMode || 'environment';
           updateCameraIndicator();
-        }).catch(function(err) {
-          console.warn('Scanner failed:', err.message);
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera error: ' + err.message, 'error');
-          statusText.textContent = '❌ Camera error';
+          
+          var config = {
+            fps: 15,
+            qrbox: { width: 180, height: 180 },
+            aspectRatio: 1.0
+          };
+
+          // Start scanning
+          html5QrCode.start(
+            { facingMode: facingMode },
+            config,
+            onScanSuccess,
+            onScanError
+          ).then(function() {
+            isScanning = true;
+            scannerInitialized = true;
+            var cameraName = (facingMode === 'user') ? 'FRONT' : 'BACK';
+            updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' active', 'success');
+            statusText.textContent = '🔍 Scanning for QR codes...';
+            startBtn.classList.add('hidden');
+            stopBtn.classList.remove('hidden');
+            cameraControls.classList.remove('hidden');
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
+            
+            updateCameraIndicator();
+          }).catch(function(err) {
+            console.warn('Scanner failed:', err.message);
+            var errorMsg = err.message;
+            if (errorMsg.includes('NotAllowedError')) {
+              errorMsg = 'Camera access denied. Please allow camera access.';
+            } else if (errorMsg.includes('NotFoundError')) {
+              errorMsg = 'No camera found on this device.';
+            }
+            updateStatus('<i class="fas fa-exclamation-circle"></i> Camera error: ' + errorMsg, 'error');
+            statusText.textContent = '❌ Camera error';
+            startBtn.disabled = false;
+            startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
+            scanOverlay.classList.remove('active');
+          });
+        } catch (err) {
+          console.warn('Scanner error:', err.message);
+          updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start: ' + err.message, 'error');
           startBtn.disabled = false;
           startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
           scanOverlay.classList.remove('active');
-        });
-      } catch (err) {
-        console.warn('Scanner error:', err.message);
-        updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start: ' + err.message, 'error');
-        startBtn.disabled = false;
-        startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
-        scanOverlay.classList.remove('active');
-      }
+        }
+      });
     }
 
     // ========================================
@@ -659,9 +692,16 @@
           setTimeout(function() { isProcessing = false; }, 1500);
         }
       } else {
+        // Fallback: Show the scanned data in the result area
         sendStatus.className = 'send-status warning';
-        sendStatus.innerHTML = '⚠️ No parent window found.';
+        sendStatus.innerHTML = '⚠️ No parent window found. Data displayed below.';
         sendStatus.classList.remove('hidden');
+        
+        // Display data in result area for manual copy
+        resultDiv.innerHTML += '<div style="background:#fff3cd;padding:6px 10px;border-radius:6px;margin-top:4px;font-size:10px;border-left:3px solid #ffc107;">' +
+            '<strong>Scanned Data:</strong> ' + dataToSend +
+          '</div>';
+        
         setTimeout(function() { isProcessing = false; }, 1500);
       }
     }
