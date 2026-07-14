@@ -348,7 +348,7 @@
       <br>
       <span class="attendance-status on-time" id="attendanceStatus">✓ On Time</span>
       <span style="font-size: 8px; color: #6c757d; margin-left: 6px;">
-        <i class="fas fa-clock"></i> 5:40 AM - 6:15 AM
+        <i class="fas fa-clock"></i> 5:30 AM - 6:15 AM
       </span>
     </div>
 
@@ -415,9 +415,9 @@
     var currentFacingMode = 'environment';
     var lastScannedData = '';
 
-    // ATTENDANCE WINDOW: 5:40 AM - 6:15 AM
-    const ATTENDANCE_START = 340;
-    const ATTENDANCE_END = 375;
+    // ATTENDANCE WINDOW: 5:30 AM - 6:15 AM (CHANGED FROM 5:40 AM)
+    const ATTENDANCE_START = 330;    // 5:30 AM (5*60 + 30)
+    const ATTENDANCE_END = 375;      // 6:15 AM (6*60 + 15)
 
     // ========================================
     // DOM REFS
@@ -467,7 +467,7 @@
       
       if (totalMinutes < ATTENDANCE_START) {
         statusClass = 'early';
-        statusTextVal = '⏰ Too Early';
+        statusTextVal = '⏰ Too Early (5:30 AM)';
       } else if (totalMinutes >= ATTENDANCE_START && totalMinutes <= ATTENDANCE_END) {
         statusClass = 'on-time';
         statusTextVal = '✓ On Time';
@@ -720,7 +720,7 @@
       
       var totalMinutes = new Date().getHours() * 60 + new Date().getMinutes();
       if (totalMinutes < ATTENDANCE_START) {
-        statusDisplay = 'Too Early (5:40 AM)';
+        statusDisplay = 'Too Early (5:30 AM)';
       } else if (totalMinutes >= ATTENDANCE_END) {
         statusDisplay = 'Late';
       }
