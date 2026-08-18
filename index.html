@@ -1,841 +1,514 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>MBHS - QR Attendance Scanner</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 10px;
-      touch-action: manipulation;
-    }
-    .container {
-      background: white;
-      border-radius: 16px;
-      padding: 12px 16px;
-      max-width: 500px;
-      width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      max-height: 99vh;
-      overflow-y: auto;
-    }
-    
-    .server-datetime {
-      background: #f0f2f5;
-      padding: 5px 10px;
-      border-radius: 6px;
-      margin: 0 0 6px 0;
-      text-align: center;
-      font-size: 10px;
-      color: #2c3e50;
-      border: 1px solid #e4e6eb;
-      line-height: 1.4;
-    }
-    .server-datetime i { color: #6c5ce7; margin-right: 4px; font-size: 10px; }
-    .server-datetime .date { font-weight: 600; }
-    .server-datetime .time { font-weight: 600; color: #6c5ce7; }
-    
-    .attendance-status {
-      display: inline-block;
-      padding: 1px 10px;
-      border-radius: 12px;
-      font-size: 9px;
-      font-weight: 600;
-      margin-top: 2px;
-    }
-    .attendance-status.on-time { background: #d4edda; color: #155724; }
-    .attendance-status.late { background: #fff3cd; color: #856404; }
-    .attendance-status.early { background: #d1ecf1; color: #0c5460; }
-    
-    #reader-container {
-      width: 100%;
-      position: relative;
-      background: #000;
-      border-radius: 10px;
-      overflow: hidden;
-      min-height: 350px;
-      max-height: 450px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #reader-container video {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important;
-      display: block;
-    }
-    #reader-container video.mirrored {
-      transform: scaleX(-1);
-    }
-    #reader-container canvas {
-      display: none !important;
-    }
-    
-    #scan-overlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 70%;
-      max-width: 280px;
-      height: 70%;
-      max-height: 280px;
-      border: 3px solid rgba(108, 92, 231, 0.8);
-      border-radius: 12px;
-      box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.3);
-      pointer-events: none;
-      display: none;
-      transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-    #scan-overlay.active {
-      display: block;
-    }
-    #scan-overlay.scan-success {
-      border-color: #28a745 !important;
-      box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.3), 0 0 30px rgba(40, 167, 69, 0.6);
-      animation: scanPulse 0.5s ease;
-    }
-    #scan-overlay .corner {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border-color: #6c5ce7;
-      border-style: solid;
-      border-width: 0;
-      transition: border-color 0.3s ease;
-    }
-    #scan-overlay.scan-success .corner {
-      border-color: #28a745 !important;
-    }
-    #scan-overlay .corner.tl { top: -3px; left: -3px; border-top-width: 4px; border-left-width: 4px; border-radius: 4px 0 0 0; }
-    #scan-overlay .corner.tr { top: -3px; right: -3px; border-top-width: 4px; border-right-width: 4px; border-radius: 0 4px 0 0; }
-    #scan-overlay .corner.bl { bottom: -3px; left: -3px; border-bottom-width: 4px; border-left-width: 4px; border-radius: 0 0 0 4px; }
-    #scan-overlay .corner.br { bottom: -3px; right: -3px; border-bottom-width: 4px; border-right-width: 4px; border-radius: 0 0 4px 0; }
-    
-    /* Scanning line animation */
-    #scan-line {
-      position: absolute;
-      top: 10%;
-      left: 10%;
-      width: 80%;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #6c5ce7, transparent);
-      opacity: 0.7;
-      animation: scanLine 2s ease-in-out infinite;
-      pointer-events: none;
-      display: none;
-    }
-    #scan-line.active {
-      display: block;
-    }
-    #scan-overlay.scan-success #scan-line {
-      background: linear-gradient(90deg, transparent, #28a745, transparent);
-    }
-    
-    @keyframes scanLine {
-      0% { top: 10%; opacity: 0.3; }
-      50% { top: 85%; opacity: 1; }
-      100% { top: 10%; opacity: 0.3; }
-    }
-    
-    @keyframes scanPulse {
-      0% { transform: translate(-50%, -50%) scale(1); }
-      50% { transform: translate(-50%, -50%) scale(1.05); }
-      100% { transform: translate(-50%, -50%) scale(1); }
-    }
-    
-    #result { margin-top: 6px; text-align: center; min-height: 30px; max-height: 150px; overflow-y: auto; font-size: 11px; }
-    
-    .btn {
-      padding: 6px 12px;
-      border: none;
-      border-radius: 30px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      touch-action: manipulation;
-      min-height: 30px;
-      justify-content: center;
-    }
-    .btn-primary { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; }
-    .btn-primary:active { transform: scale(0.95); }
-    .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; }
-    .btn-danger:active { transform: scale(0.95); }
-    .btn-secondary { background: #6c757d; color: white; }
-    .btn-secondary:active { transform: scale(0.95); }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    
-    .btn-group { 
-      display: flex; 
-      gap: 5px; 
-      margin-top: 6px; 
-      justify-content: center; 
-      flex-wrap: wrap; 
-    }
-    .btn-group .btn { flex: 1; min-width: 60px; }
-    
-    .status-box {
-      padding: 4px 10px;
-      border-radius: 6px;
-      margin: 4px 0;
-      text-align: center;
-      font-size: 10px;
-    }
-    .status-info { background: #d1ecf1; color: #0c5460; border-left: 3px solid #17a2b8; }
-    .status-success { background: #d4edda; color: #155724; border-left: 3px solid #28a745; }
-    .status-error { background: #f8d7da; color: #721c24; border-left: 3px solid #dc3545; }
-    .status-warning { background: #fff3cd; color: #856404; border-left: 3px solid #ffc107; }
-    
-    .scanned-result {
-      background: #d4edda;
-      padding: 6px 10px;
-      border-radius: 6px;
-      border-left: 3px solid #28a745;
-      margin-bottom: 4px;
-      animation: slideIn 0.3s ease;
-    }
-    .scanned-result .info-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 2px 0;
-      font-size: 10px;
-      border-bottom: 1px solid rgba(0,0,0,0.05);
-    }
-    .scanned-result .info-row:last-child { border-bottom: none; }
-    .scanned-result .label { font-weight: 600; color: #2c3e50; font-size: 10px; }
-    .scanned-result .value { color: #155724; font-weight: 500; font-size: 10px; }
-    
-    .hidden { display: none !important; }
-    
-    .counter {
-      text-align: center;
-      font-size: 10px;
-      color: #666;
-      margin-top: 4px;
-      padding: 3px;
-      background: #f8f9fa;
-      border-radius: 6px;
-    }
-    .counter span { font-weight: 700; color: #6c5ce7; }
-    
-    .scan-animation {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #2ecc71;
-      animation: pulse 1.5s ease-in-out infinite;
-      margin-right: 4px;
-    }
-    
-    .status-text {
-      text-align: center;
-      font-size: 9px;
-      color: #95a5a6;
-      margin-top: 4px;
-    }
-    
-    .send-status {
-      margin-top: 4px;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 10px;
-      text-align: center;
-    }
-    .send-status.success { background: #d4edda; color: #155724; }
-    .send-status.error { background: #f8d7da; color: #721c24; }
-    .send-status.sending { background: #d1ecf1; color: #0c5460; }
-    
-    .camera-controls {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      margin-top: 4px;
-      padding: 4px 6px;
-      background: #f8f9fa;
-      border-radius: 6px;
-      flex-wrap: wrap;
-    }
-    .camera-controls.hidden { display: none !important; }
-    
-    .camera-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: 600;
-    }
-    .camera-indicator.front { background: #d1ecf1; color: #0c5460; }
-    .camera-indicator.back { background: #d4edda; color: #155724; }
-    
-    .camera-controls .btn {
-      padding: 3px 10px;
-      font-size: 10px;
-      min-height: 24px;
-    }
-    
-    .btn-switch-camera {
-      background: linear-gradient(135deg, #17a2b8, #0dcaf0);
-      color: white;
-    }
-    .btn-switch-camera:active { transform: scale(0.95); }
-    
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    @keyframes pulse {
-      0% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.8); }
-      100% { opacity: 1; transform: scale(1); }
-    }
-    
-    @media (max-width: 500px) {
-      .container { padding: 8px 10px; }
-      #reader-container { min-height: 280px; max-height: 350px; }
-      #scan-overlay { width: 75%; max-width: 220px; height: 75%; max-height: 220px; }
-      #scan-overlay .corner { width: 16px; height: 16px; }
-      .btn { font-size: 10px; padding: 4px 10px; min-height: 26px; }
-      .btn-group .btn { min-width: 50px; }
-    }
-    
-    @media (max-height: 700px) {
-      .container { padding: 6px 8px; }
-      #reader-container { min-height: 220px; max-height: 280px; }
-      #scan-overlay { width: 70%; max-width: 180px; height: 70%; max-height: 180px; }
-      #scan-overlay .corner { width: 14px; height: 14px; }
-      .server-datetime { padding: 3px 6px; font-size: 9px; margin: 0 0 4px 0; }
-      .btn { font-size: 9px; padding: 3px 8px; min-height: 22px; }
-      .btn-group { gap: 3px; margin-top: 4px; }
-      .camera-controls { padding: 3px 4px; }
-      .camera-indicator { font-size: 9px; padding: 2px 8px; }
-      .camera-controls .btn { font-size: 9px; padding: 2px 8px; min-height: 20px; }
-      .counter { font-size: 9px; }
-      .status-text { font-size: 8px; }
-      .status-box { font-size: 9px; padding: 3px 6px; }
-      #result { font-size: 10px; min-height: 25px; max-height: 100px; }
-      .scanned-result .info-row { font-size: 9px; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MBHS - QR Scanner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            touch-action: manipulation;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 16px 20px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-height: 99vh;
+            overflow-y: auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .header h2 {
+            color: #2c3e50;
+            font-size: 20px;
+        }
+        .header p {
+            color: #7f8c8d;
+            font-size: 13px;
+        }
+        #reader-container {
+            width: 100%;
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            min-height: 300px;
+            max-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #reader-container video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block;
+        }
+        #result {
+            margin-top: 12px;
+            text-align: center;
+            min-height: 40px;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            touch-action: manipulation;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+        }
+        .btn-primary:active { transform: scale(0.95); }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        .btn-success:active { transform: scale(0.95); }
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+        .btn-danger:active { transform: scale(0.95); }
+        
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn-group .btn { flex: 1; min-width: 80px; }
+        
+        .status-box {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+            text-align: center;
+            font-size: 13px;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 3px solid #28a745;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 3px solid #dc3545;
+        }
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 3px solid #17a2b8;
+        }
+        .hidden { display: none !important; }
+        
+        .scanned-data {
+            background: #d4edda;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #28a745;
+            margin: 8px 0;
+            text-align: left;
+            font-size: 13px;
+        }
+        .scanned-data .label { font-weight: 600; color: #2c3e50; }
+        .scanned-data .value { color: #155724; font-weight: 500; }
+        
+        .scan-animation {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #2ecc71;
+            animation: pulse 1.5s ease-in-out infinite;
+            margin-right: 6px;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        @media (max-width: 500px) {
+            .container { padding: 12px 14px; }
+            #reader-container { min-height: 250px; max-height: 300px; }
+            .header h2 { font-size: 17px; }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    
-    <div class="server-datetime" id="serverDateTime">
-      <i class="fas fa-calendar-day"></i>
-      <span class="date" id="serverDate">Loading date...</span>
-      <span style="margin: 0 4px;">|</span>
-      <i class="fas fa-clock"></i>
-      <span class="time" id="serverTime">Loading time...</span>
-      <br>
-      <span class="attendance-status on-time" id="attendanceStatus">✓ On Time</span>
-      <span style="font-size: 8px; color: #6c757d; margin-left: 6px;">
-        <i class="fas fa-clock"></i> 5:30 AM - 6:15 AM
-      </span>
+    <div class="container">
+        <div class="header">
+            <h2>📷 QR Code Scanner</h2>
+            <p>Scan the QR code to mark attendance</p>
+        </div>
+        
+        <div id="statusMessage" class="status-box status-info">
+            <span class="scan-animation"></span> Initializing camera...
+        </div>
+        
+        <div id="reader-container">
+            <div id="reader"></div>
+        </div>
+        
+        <div id="result"></div>
+        
+        <div class="btn-group">
+            <button class="btn btn-primary" id="startBtn">
+                <i class="fas fa-camera"></i> Start
+            </button>
+            <button class="btn btn-danger hidden" id="stopBtn">
+                <i class="fas fa-stop"></i> Stop
+            </button>
+            <button class="btn btn-success hidden" id="sendBtn">
+                <i class="fas fa-paper-plane"></i> Send to Form
+            </button>
+        </div>
+        
+        <div style="margin-top: 12px; text-align: center; font-size: 11px; color: #95a5a6;">
+            <i class="fas fa-info-circle"></i> Point camera at QR code
+        </div>
     </div>
 
-    <div id="statusMessage" class="status-box status-info">
-      <i class="fas fa-spinner fa-spin"></i> Initializing camera...
-    </div>
-
-    <div id="reader-container">
-      <div id="reader"></div>
-      <div id="scan-overlay">
-        <div class="corner tl"></div>
-        <div class="corner tr"></div>
-        <div class="corner bl"></div>
-        <div class="corner br"></div>
-        <div id="scan-line"></div>
-      </div>
-    </div>
-    
-    <div class="camera-controls" id="cameraControls">
-      <span class="camera-indicator back" id="cameraIndicator">
-        <i class="fas fa-camera"></i> Back
-      </span>
-      <button class="btn btn-switch-camera" id="switchCameraBtn">
-        <i class="fas fa-sync-alt"></i> Switch
-      </button>
-    </div>
-    
-    <div id="result"></div>
-    <div id="sendStatus" class="send-status hidden"></div>
-
-    <div class="btn-group">
-      <button class="btn btn-primary" id="startBtn">
-        <i class="fas fa-camera"></i> Start
-      </button>
-      <button class="btn btn-danger hidden" id="stopBtn">
-        <i class="fas fa-stop"></i> Stop
-      </button>
-      <button class="btn btn-secondary" onclick="window.close()">
-        <i class="fas fa-times"></i> Close
-      </button>
-    </div>
-
-    <div class="counter">
-      <i class="fas fa-users"></i> Scanned: <span id="scanCount">0</span> students
-    </div>
-
-    <div class="status-text">
-      <span id="statusText">Ready</span>
-    </div>
-  </div>
-
-  <!-- Load QR Scanner Library -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  
-  <script>
-    // ========================================
-    // CONFIGURATION
-    // ========================================
-    var html5QrCode = null;
-    var isScanning = false;
-    var scanCount = 0;
-    var isProcessing = false;
-    var scannerInitialized = false;
-    var currentFacingMode = 'environment';
-    var lastScannedData = '';
-
-    // ATTENDANCE WINDOW: 5:30 AM - 6:15 AM (CHANGED FROM 5:40 AM)
-    const ATTENDANCE_START = 330;    // 5:30 AM (5*60 + 30)
-    const ATTENDANCE_END = 375;      // 6:15 AM (6*60 + 15)
-
-    // ========================================
-    // DOM REFS
-    // ========================================
-    var statusMessage = document.getElementById('statusMessage');
-    var statusText = document.getElementById('statusText');
-    var resultDiv = document.getElementById('result');
-    var scanCountEl = document.getElementById('scanCount');
-    var stopBtn = document.getElementById('stopBtn');
-    var startBtn = document.getElementById('startBtn');
-    var switchCameraBtn = document.getElementById('switchCameraBtn');
-    var cameraIndicator = document.getElementById('cameraIndicator');
-    var cameraControls = document.getElementById('cameraControls');
-    var sendStatus = document.getElementById('sendStatus');
-    var serverDateEl = document.getElementById('serverDate');
-    var serverTimeEl = document.getElementById('serverTime');
-    var attendanceStatusEl = document.getElementById('attendanceStatus');
-    var scanOverlay = document.getElementById('scan-overlay');
-    var readerContainer = document.getElementById('reader-container');
-    var scanLine = document.getElementById('scan-line');
-
-    // ========================================
-    // SERVER DATE/TIME
-    // ========================================
-    function loadServerDateTime() {
-      var now = new Date();
-      var phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-      
-      var dateDisplay = phTime.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-      var timeStr = phTime.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
-      var totalMinutes = phTime.getHours() * 60 + phTime.getMinutes();
-      
-      serverDateEl.textContent = dateDisplay;
-      serverTimeEl.textContent = timeStr;
-      
-      var statusClass = 'on-time';
-      var statusTextVal = '✓ On Time';
-      
-      if (totalMinutes < ATTENDANCE_START) {
-        statusClass = 'early';
-        statusTextVal = '⏰ Too Early (5:30 AM)';
-      } else if (totalMinutes >= ATTENDANCE_START && totalMinutes <= ATTENDANCE_END) {
-        statusClass = 'on-time';
-        statusTextVal = '✓ On Time';
-      } else {
-        statusClass = 'late';
-        statusTextVal = '⏰ LATE';
-      }
-      
-      attendanceStatusEl.className = 'attendance-status ' + statusClass;
-      attendanceStatusEl.textContent = statusTextVal;
-    }
-
-    // ========================================
-    // UPDATE CAMERA INDICATOR
-    // ========================================
-    function updateCameraIndicator() {
-      var isFront = (currentFacingMode === 'user');
-      var cameraName = isFront ? 'Front' : 'Back';
-      var icon = isFront ? 'fa-user' : 'fa-camera';
-      var className = isFront ? 'front' : 'back';
-      var switchText = isFront ? 'Switch to Back' : 'Switch to Front';
-      var switchIcon = isFront ? 'fa-camera' : 'fa-user';
-      
-      cameraIndicator.className = 'camera-indicator ' + className;
-      cameraIndicator.innerHTML = '<i class="fas ' + icon + '"></i> ' + cameraName;
-      switchCameraBtn.innerHTML = '<i class="fas ' + switchIcon + '"></i> ' + switchText;
-    }
-
-    // ========================================
-    // CHECK CAMERA PERMISSIONS
-    // ========================================
-    function checkCameraPermissions() {
-      return navigator.mediaDevices.getUserMedia({ video: true })
-        .then(function(stream) {
-          stream.getTracks().forEach(function(track) { track.stop(); });
-          return true;
-        })
-        .catch(function(err) {
-          console.error('Camera permission error:', err);
-          return false;
-        });
-    }
-
-    // ========================================
-    // QR SCANNER
-    // ========================================
-    function startScanner() {
-      // Clean up existing scanner
-      if (html5QrCode) {
-        try {
-          html5QrCode.stop().then(function() {
-            html5QrCode.clear();
-            html5QrCode = null;
-          }).catch(function() { html5QrCode = null; });
-        } catch(e) { html5QrCode = null; }
-      }
-
-      startBtn.disabled = true;
-      startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-      // Check if library is loaded
-      if (typeof Html5Qrcode === 'undefined') {
-        updateStatus('<i class="fas fa-exclamation-circle"></i> QR library not loaded. Please refresh.', 'error');
-        startBtn.disabled = false;
-        startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
-        return;
-      }
-
-      // Check camera permissions first
-      checkCameraPermissions().then(function(hasPermission) {
-        if (!hasPermission) {
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Camera access denied. Please allow camera access and try again.', 'error');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
-          return;
-        }
-
-        try {
-          var readerElement = document.getElementById('reader');
-          readerElement.innerHTML = '';
-          
-          // Create scanner instance
-          html5QrCode = new Html5Qrcode("reader");
-          scanOverlay.classList.add('active');
-          scanLine.classList.add('active');
-          
-          var facingMode = currentFacingMode || 'environment';
-          updateCameraIndicator();
-          
-          var config = {
-            fps: 30,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0
-          };
-
-          // Start scanning
-          html5QrCode.start(
-            { facingMode: facingMode },
-            config,
-            onScanSuccess,
-            onScanError
-          ).then(function() {
-            isScanning = true;
-            scannerInitialized = true;
-            var cameraName = (facingMode === 'user') ? 'FRONT' : 'BACK';
-            updateStatus('<i class="fas fa-camera"></i> <span class="scan-animation"></span> ' + cameraName + ' active', 'success');
-            statusText.textContent = '🔍 Scanning for QR codes...';
-            startBtn.classList.add('hidden');
-            stopBtn.classList.remove('hidden');
-            cameraControls.classList.remove('hidden');
-            startBtn.disabled = false;
-            startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
-            
-            updateCameraIndicator();
-          }).catch(function(err) {
-            console.warn('Scanner failed:', err.message);
-            var errorMsg = err.message;
-            if (errorMsg.includes('NotAllowedError')) {
-              errorMsg = 'Camera access denied. Please allow camera access.';
-            } else if (errorMsg.includes('NotFoundError')) {
-              errorMsg = 'No camera found on this device.';
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script>
+        // ========================================
+        // QR SCANNER CONFIGURATION
+        // ========================================
+        let html5QrCode = null;
+        let isScanning = false;
+        let lastScannedData = '';
+        let scannedEmail = '';
+        let scannedLRN = '';
+        
+        const statusMessage = document.getElementById('statusMessage');
+        const resultDiv = document.getElementById('result');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        
+        // ========================================
+        // START SCANNER
+        // ========================================
+        function startScanner() {
+            if (html5QrCode) {
+                try {
+                    html5QrCode.stop().then(function() {
+                        html5QrCode.clear();
+                        html5QrCode = null;
+                    }).catch(function() { html5QrCode = null; });
+                } catch(e) { html5QrCode = null; }
             }
-            updateStatus('<i class="fas fa-exclamation-circle"></i> Camera error: ' + errorMsg, 'error');
-            statusText.textContent = '❌ Camera error';
-            startBtn.disabled = false;
-            startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
-            scanOverlay.classList.remove('active');
-            scanLine.classList.remove('active');
-          });
-        } catch (err) {
-          console.warn('Scanner error:', err.message);
-          updateStatus('<i class="fas fa-exclamation-circle"></i> Failed to start: ' + err.message, 'error');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
-          scanOverlay.classList.remove('active');
-          scanLine.classList.remove('active');
+            
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            statusMessage.className = 'status-box status-info';
+            statusMessage.innerHTML = '<span class="scan-animation"></span> Opening camera...';
+            
+            if (typeof Html5Qrcode === 'undefined') {
+                statusMessage.className = 'status-box status-error';
+                statusMessage.innerHTML = '❌ QR library not loaded. Please refresh.';
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
+                return;
+            }
+            
+            try {
+                const readerElement = document.getElementById('reader');
+                readerElement.innerHTML = '';
+                
+                html5QrCode = new Html5Qrcode("reader");
+                
+                const config = {
+                    fps: 30,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+                
+                html5QrCode.start(
+                    { facingMode: 'environment' },
+                    config,
+                    onScanSuccess,
+                    onScanError
+                ).then(function() {
+                    isScanning = true;
+                    statusMessage.className = 'status-box status-success';
+                    statusMessage.innerHTML = '✅ <span class="scan-animation"></span> Scanner active. Point at QR code.';
+                    startBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
+                }).catch(function(err) {
+                    console.warn('Scanner error:', err.message);
+                    let errorMsg = err.message;
+                    if (errorMsg.includes('NotAllowedError')) {
+                        errorMsg = 'Camera access denied. Please allow camera access.';
+                    } else if (errorMsg.includes('NotFoundError')) {
+                        errorMsg = 'No camera found on this device.';
+                    }
+                    statusMessage.className = 'status-box status-error';
+                    statusMessage.innerHTML = '❌ ' + errorMsg;
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
+                });
+            } catch (err) {
+                console.warn('Error:', err.message);
+                statusMessage.className = 'status-box status-error';
+                statusMessage.innerHTML = '❌ Failed to start: ' + err.message;
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
+            }
         }
-      });
-    }
-
-    // ========================================
-    // SWITCH CAMERA
-    // ========================================
-    function switchCamera() {
-      currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
-      var cameraName = (currentFacingMode === 'user') ? 'Front' : 'Back';
-      updateStatus('<i class="fas fa-sync-alt fa-spin"></i> Switching to ' + cameraName + '...', 'info');
-      updateCameraIndicator();
-      
-      if (html5QrCode && isScanning) {
-        html5QrCode.stop().then(function() {
-          isScanning = false;
-          startScanner();
-        }).catch(function() {
-          isScanning = false;
-          startScanner();
+        
+        // ========================================
+        // STOP SCANNER
+        // ========================================
+        function stopScanner() {
+            if (html5QrCode && isScanning) {
+                html5QrCode.stop().then(function() {
+                    isScanning = false;
+                    stopBtn.classList.add('hidden');
+                    startBtn.classList.remove('hidden');
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
+                    statusMessage.className = 'status-box status-info';
+                    statusMessage.innerHTML = '⏹️ Scanner stopped.';
+                }).catch(function() {});
+            } else {
+                stopBtn.classList.add('hidden');
+                startBtn.classList.remove('hidden');
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
+            }
+        }
+        
+        // ========================================
+        // SEND DATA TO ATTENDANCE FORM
+        // ========================================
+        function sendToAttendanceForm() {
+            if (!scannedEmail && !scannedLRN) {
+                resultDiv.innerHTML = '<div class="status-box status-error">❌ No QR code scanned yet.</div>';
+                return;
+            }
+            
+            // Build the data string
+            let dataToSend = '';
+            if (scannedEmail && scannedLRN) {
+                dataToSend = scannedEmail + '|' + scannedLRN;
+            } else if (scannedLRN) {
+                dataToSend = scannedLRN;
+            } else {
+                dataToSend = scannedEmail;
+            }
+            
+            console.log('📤 Sending data:', dataToSend);
+            
+            // Try to send to parent window (if in iframe)
+            if (window.parent && window.parent !== window) {
+                try {
+                    window.parent.postMessage({
+                        type: 'LRN_SCANNED',
+                        lrn: dataToSend
+                    }, '*');
+                    console.log('✅ Sent to parent window');
+                } catch(e) {
+                    console.warn('Could not send to parent:', e);
+                }
+            }
+            
+            // Try to send to opener (if opened as popup)
+            if (window.opener && window.opener !== window) {
+                try {
+                    window.opener.postMessage({
+                        type: 'LRN_SCANNED',
+                        lrn: dataToSend
+                    }, '*');
+                    console.log('✅ Sent to opener window');
+                } catch(e) {
+                    console.warn('Could not send to opener:', e);
+                }
+            }
+            
+            // Also try to send to all parent windows
+            try {
+                window.postMessage({
+                    type: 'LRN_SCANNED',
+                    lrn: dataToSend
+                }, '*');
+                console.log('✅ Sent to current window');
+            } catch(e) {
+                console.warn('Could not send to current:', e);
+            }
+            
+            // Show success message
+            resultDiv.innerHTML = `
+                <div class="status-box status-success">
+                    <i class="fas fa-check-circle"></i> 
+                    Data sent to attendance form!<br>
+                    <small style="font-size: 11px; color: #6c757d;">
+                        You can close this window now.
+                    </small>
+                </div>
+            `;
+            
+            sendBtn.classList.add('hidden');
+            
+            // Try to close the window after 2 seconds
+            setTimeout(function() {
+                try {
+                    window.close();
+                } catch(e) {
+                    console.log('Window will stay open (not opened by script)');
+                }
+            }, 2000);
+        }
+        
+        // ========================================
+        // SCAN SUCCESS
+        // ========================================
+        function onScanSuccess(decodedText, decodedResult) {
+            // Prevent duplicate scans
+            if (lastScannedData === decodedText) {
+                return;
+            }
+            lastScannedData = decodedText;
+            
+            console.log('📋 QR Scanned:', decodedText);
+            
+            // Parse the QR data
+            let email = '';
+            let lrn = '';
+            
+            if (decodedText.includes('|')) {
+                const parts = decodedText.split('|');
+                email = parts[0]?.trim() || '';
+                lrn = parts[1]?.trim() || '';
+            } else if (/^\d{12}$/.test(decodedText)) {
+                lrn = decodedText;
+            } else if (decodedText.includes('@')) {
+                email = decodedText;
+            } else {
+                // Try to find LRN in the text
+                const lrnMatch = decodedText.match(/\d{12}/);
+                if (lrnMatch) {
+                    lrn = lrnMatch[0];
+                }
+            }
+            
+            scannedEmail = email;
+            scannedLRN = lrn;
+            
+            // Show scanned data
+            let html = `
+                <div class="scanned-data">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-weight: 600; color: #28a745;">
+                            <i class="fas fa-check-circle"></i> QR Code Detected!
+                        </span>
+                        <span style="font-size: 11px; color: #6c757d;">${new Date().toLocaleTimeString()}</span>
+                    </div>
+            `;
+            
+            if (email) {
+                html += `<div><span class="label">📧 Email:</span> <span class="value">${email}</span></div>`;
+            }
+            if (lrn) {
+                html += `<div><span class="label">🔢 LRN:</span> <span class="value">${lrn}</span></div>`;
+            }
+            if (!email && !lrn) {
+                html += `<div><span class="label">📋 Raw Data:</span> <span class="value">${decodedText}</span></div>`;
+            }
+            
+            html += `</div>`;
+            resultDiv.innerHTML = html;
+            
+            // Show send button
+            sendBtn.classList.remove('hidden');
+            
+            // Auto-send after 1 second
+            setTimeout(function() {
+                sendToAttendanceForm();
+            }, 1000);
+        }
+        
+        function onScanError(errorMessage) {
+            // Silent - errors are expected during scanning
+        }
+        
+        // ========================================
+        // EVENT LISTENERS
+        // ========================================
+        startBtn.addEventListener('click', startScanner);
+        stopBtn.addEventListener('click', stopScanner);
+        sendBtn.addEventListener('click', sendToAttendanceForm);
+        
+        // ========================================
+        // START ON PAGE LOAD
+        // ========================================
+        window.addEventListener('DOMContentLoaded', function() {
+            function checkLibraryAndStart() {
+                if (typeof Html5Qrcode !== 'undefined') {
+                    statusMessage.className = 'status-box status-info';
+                    statusMessage.innerHTML = '📷 Ready. Starting camera...';
+                    setTimeout(function() {
+                        startScanner();
+                    }, 500);
+                } else {
+                    setTimeout(checkLibraryAndStart, 300);
+                }
+            }
+            setTimeout(checkLibraryAndStart, 500);
         });
-      } else {
-        startScanner();
-      }
-    }
-
-    function stopScanner() {
-      if (html5QrCode && isScanning) {
-        html5QrCode.stop().then(function() {
-          isScanning = false;
-          scannerInitialized = false;
-          scanOverlay.classList.remove('active');
-          scanLine.classList.remove('active');
-          stopBtn.classList.add('hidden');
-          cameraControls.classList.remove('hidden');
-          startBtn.classList.remove('hidden');
-          startBtn.disabled = false;
-          startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
-          updateStatus('<i class="fas fa-info-circle"></i> Scanner stopped.', 'info');
-          statusText.textContent = '⏹️ Stopped';
-        }).catch(function() {});
-      } else {
-        stopBtn.classList.add('hidden');
-        cameraControls.classList.remove('hidden');
-        startBtn.classList.remove('hidden');
-        startBtn.disabled = false;
-        startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
-      }
-    }
-
-    // ========================================
-    // SCAN SUCCESS HANDLER
-    // ========================================
-    function onScanSuccess(decodedText, decodedResult) {
-      // Prevent duplicate scans
-      if (lastScannedData === decodedText) {
-        return;
-      }
-      lastScannedData = decodedText;
-      
-      // Show green border animation
-      scanOverlay.classList.add('scan-success');
-      
-      // Process the data
-      processScannedData(decodedText);
-      
-      // Reset the overlay after animation
-      setTimeout(function() {
-        scanOverlay.classList.remove('scan-success');
-        // Reset lastScannedData after a delay to allow re-scanning same QR
-        setTimeout(function() {
-          lastScannedData = '';
-        }, 2000);
-      }, 800);
-    }
-
-    function onScanError(errorMessage) {
-      // Silent - errors are expected during scanning
-    }
-
-    // ========================================
-    // PROCESS SCANNED DATA
-    // ========================================
-    function processScannedData(decodedText) {
-      if (isProcessing) return;
-      isProcessing = true;
-      
-      var email = '';
-      var lrn = '';
-      
-      if (decodedText.indexOf('|') > -1) {
-        var parts = decodedText.split('|');
-        email = parts[0].trim();
-        lrn = parts[1].trim();
-      } else if (/^\d{12}$/.test(decodedText)) {
-        lrn = decodedText;
-      } else {
-        resultDiv.innerHTML = '<div style="background:#f8d7da;padding:6px 10px;border-radius:6px;border-left:3px solid #dc3545;font-size:10px;">' +
-            '<i class="fas fa-exclamation-circle" style="color:#dc3545;"></i> Invalid QR Code' +
-          '</div>';
-        isProcessing = false;
-        return;
-      }
-
-      if (!/^\d{12}$/.test(lrn)) {
-        resultDiv.innerHTML = '<div style="background:#f8d7da;padding:6px 10px;border-radius:6px;border-left:3px solid #dc3545;font-size:10px;">' +
-            '<i class="fas fa-exclamation-circle" style="color:#dc3545;"></i> Invalid LRN: ' + lrn +
-          '</div>';
-        isProcessing = false;
-        return;
-      }
-
-      var statusDisplay = 'Present (On Time)';
-      
-      var totalMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-      if (totalMinutes < ATTENDANCE_START) {
-        statusDisplay = 'Too Early (5:30 AM)';
-      } else if (totalMinutes >= ATTENDANCE_END) {
-        statusDisplay = 'Late';
-      }
-
-      showScannedResult(lrn, email, statusDisplay);
-      
-      var dataToSend = email + '|' + lrn;
-      
-      // Send to parent window (if in iframe) or opener (if popup)
-      var targetWindow = window.parent !== window ? window.parent : window.opener;
-      
-      if (targetWindow && targetWindow !== window) {
-        try {
-          targetWindow.postMessage({
-            type: 'LRN_SCANNED',
-            lrn: dataToSend
-          }, '*');
-          
-          sendStatus.className = 'send-status success';
-          sendStatus.innerHTML = '✅ Data sent to form!';
-          sendStatus.classList.remove('hidden');
-          statusText.textContent = '✅ Sent to form - auto-submitting...';
-          
-          scanCount++;
-          scanCountEl.textContent = scanCount;
-          
-          setTimeout(function() {
-            resultDiv.innerHTML = '<div style="background:#d1ecf1;padding:6px 10px;border-radius:6px;border-left:3px solid #17a2b8;text-align:center;font-size:10px;color:#0c5460;">' +
-                '<i class="fas fa-camera"></i> Ready for next student. Scan another QR code.' +
-              '</div>';
-            statusText.textContent = '🔍 Ready for next student';
-            sendStatus.classList.add('hidden');
-            isProcessing = false;
-          }, 2000);
-          
-        } catch(e) {
-          console.warn('Error sending to parent:', e.message);
-          sendStatus.className = 'send-status warning';
-          sendStatus.innerHTML = '⚠️ Could not send to form. Please try again.';
-          sendStatus.classList.remove('hidden');
-          setTimeout(function() { isProcessing = false; }, 1500);
-        }
-      } else {
-        // Fallback: Show the scanned data in the result area
-        sendStatus.className = 'send-status warning';
-        sendStatus.innerHTML = '⚠️ No parent window found. Data displayed below.';
-        sendStatus.classList.remove('hidden');
         
-        // Display data in result area for manual copy
-        resultDiv.innerHTML += '<div style="background:#fff3cd;padding:6px 10px;border-radius:6px;margin-top:4px;font-size:10px;border-left:3px solid #ffc107;">' +
-            '<strong>Scanned Data:</strong> ' + dataToSend +
-          '</div>';
+        window.addEventListener('beforeunload', function() {
+            stopScanner();
+        });
         
-        setTimeout(function() { isProcessing = false; }, 1500);
-      }
-    }
-
-    function showScannedResult(lrn, email, statusDisplay) {
-      var html = '<div class="scanned-result">' +
-          '<div style="display: flex; justify-content: space-between; align-items: center;">' +
-            '<div>' +
-              '<i class="fas fa-check-circle" style="color: #28a745; font-size: 12px;"></i>' +
-              '<span style="font-weight: 600; margin-left: 4px; font-size: 11px;">QR Detected!</span>' +
-            '</div>' +
-            '<span style="font-size: 9px; color: #155724;">' + new Date().toLocaleTimeString() + '</span>' +
-          '</div>' +
-          '<div class="info-row"><span class="label">LRN:</span><span class="value">' + lrn + '</span></div>' +
-          '<div class="info-row"><span class="label">Email:</span><span class="value">' + (email || 'N/A') + '</span></div>' +
-          '<div class="info-row"><span class="label">Status:</span><span class="value"><span style="background:#6c5ce7;color:white;padding:1px 8px;border-radius:12px;font-size:9px;font-weight:600;">' + statusDisplay + '</span></span></div>' +
-        '</div>';
-      resultDiv.innerHTML = html;
-    }
-
-    function updateStatus(message, type) {
-      statusMessage.className = 'status-box status-' + type;
-      statusMessage.innerHTML = message;
-    }
-
-    // ========================================
-    // EVENT LISTENERS
-    // ========================================
-    startBtn.addEventListener('click', startScanner);
-    stopBtn.addEventListener('click', stopScanner);
-    switchCameraBtn.addEventListener('click', switchCamera);
-
-    // ========================================
-    // START ON PAGE LOAD
-    // ========================================
-    window.addEventListener('DOMContentLoaded', function() {
-      loadServerDateTime();
-      
-      currentFacingMode = 'environment';
-      updateCameraIndicator();
-      
-      // Wait for library to load then start
-      function checkLibraryAndStart() {
-        if (typeof Html5Qrcode !== 'undefined') {
-          updateStatus('<i class="fas fa-info-circle"></i> Ready. Starting camera...', 'info');
-          statusText.textContent = '📱 Starting camera...';
-          setTimeout(function() {
-            startScanner();
-          }, 500);
-        } else {
-          // Wait and check again
-          setTimeout(checkLibraryAndStart, 300);
-        }
-      }
-      
-      // Start the check
-      setTimeout(checkLibraryAndStart, 500);
-    });
-
-    window.addEventListener('beforeunload', function() {
-      stopScanner();
-    });
-  </script>
+        // Listen for messages from parent (to confirm data received)
+        window.addEventListener('message', function(event) {
+            console.log('📨 Message received in scanner:', event.data);
+            if (event.data && event.data.type === 'SCAN_CONFIRMED') {
+                // Data was received by the attendance form
+                console.log('✅ Attendance form confirmed receipt');
+                resultDiv.innerHTML = `
+                    <div class="status-box status-success">
+                        <i class="fas fa-check-circle"></i> 
+                        ✅ Data received by attendance form!<br>
+                        <small style="font-size: 11px; color: #6c757d;">
+                            You can close this window now.
+                        </small>
+                    </div>
+                `;
+                sendBtn.classList.add('hidden');
+                setTimeout(function() {
+                    try { window.close(); } catch(e) {}
+                }, 1500);
+            }
+        });
+    </script>
 </body>
 </html>
