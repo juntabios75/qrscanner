@@ -153,6 +153,16 @@
             100% { opacity: 1; transform: scale(1); }
         }
         
+        .auto-send-timer {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .auto-send-timer .countdown {
+            font-weight: 700;
+            color: #6c5ce7;
+        }
+        
         @media (max-width: 500px) {
             .container { padding: 12px 14px; }
             #reader-container { min-height: 250px; max-height: 300px; }
@@ -204,6 +214,8 @@
         let lastScannedData = '';
         let scannedEmail = '';
         let scannedLRN = '';
+        let sendTimeout = null;
+        let countdownInterval = null;
         
         const statusMessage = document.getElementById('statusMessage');
         const resultDiv = document.getElementById('result');
@@ -310,7 +322,17 @@
         // SEND DATA TO ATTENDANCE FORM
         // ========================================
         function sendToAttendanceForm() {
-            if (!scannedEmail && !scannedLRN) {
+            // Clear any pending timeouts
+            if (sendTimeout) {
+                clearTimeout(sendTimeout);
+                sendTimeout = null;
+            }
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            if (!scannedEmail && !scannedLRN && !lastScannedData) {
                 resultDiv.innerHTML = '<div class="status-box status-error">❌ No QR code scanned yet.</div>';
                 return;
             }
@@ -321,8 +343,10 @@
                 dataToSend = scannedEmail + '|' + scannedLRN;
             } else if (scannedLRN) {
                 dataToSend = scannedLRN;
-            } else {
+            } else if (scannedEmail) {
                 dataToSend = scannedEmail;
+            } else {
+                dataToSend = lastScannedData;
             }
             
             console.log('📤 Sending data:', dataToSend);
@@ -353,7 +377,7 @@
                 }
             }
             
-            // Also try to send to all parent windows
+            // Also try to send to all parent windows via broadcast
             try {
                 window.postMessage({
                     type: 'LRN_SCANNED',
@@ -368,9 +392,9 @@
             resultDiv.innerHTML = `
                 <div class="status-box status-success">
                     <i class="fas fa-check-circle"></i> 
-                    Data sent to attendance form!<br>
+                    ✅ Data sent to attendance form!<br>
                     <small style="font-size: 11px; color: #6c757d;">
-                        You can close this window now.
+                        ${dataToSend}
                     </small>
                 </div>
             `;
@@ -388,7 +412,7 @@
         }
         
         // ========================================
-        // SCAN SUCCESS
+        // SCAN SUCCESS - UPDATED to send data immediately
         // ========================================
         function onScanSuccess(decodedText, decodedResult) {
             // Prevent duplicate scans
@@ -398,6 +422,7 @@
             lastScannedData = decodedText;
             
             console.log('📋 QR Scanned:', decodedText);
+            console.log('📋 Full result:', decodedResult);
             
             // Parse the QR data
             let email = '';
@@ -443,16 +468,21 @@
                 html += `<div><span class="label">📋 Raw Data:</span> <span class="value">${decodedText}</span></div>`;
             }
             
-            html += `</div>`;
+            html += `
+                    <div style="margin-top: 8px; font-size: 12px; color: #6c5ce7;">
+                        <i class="fas fa-paper-plane"></i> Sending to attendance form...
+                    </div>
+                </div>
+            `;
             resultDiv.innerHTML = html;
             
             // Show send button
             sendBtn.classList.remove('hidden');
             
-            // Auto-send after 1 second
+            // Send immediately with a small delay to ensure the UI updates
             setTimeout(function() {
                 sendToAttendanceForm();
-            }, 1000);
+            }, 500);
         }
         
         function onScanError(errorMessage) {
