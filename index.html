@@ -3,142 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MBHS - QR Attendance</title>
-    
+    <title>MBHS - QR Scanner</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #17a2b8;
-            --primary-dark: #138496;
-            --success: #28a745;
-            --danger: #dc3545;
-            --warning: #ffc107;
-            --light: #f8f9fa;
-            --dark: #343a40;
-            --gray: #6c757d;
-            --border-radius: 12px;
-            --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        .submit-wrapper {
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            padding: 12px;
+            padding: 10px;
+            touch-action: manipulation;
         }
-
-        .submit-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: var(--border-radius);
-            padding: 20px 30px;
-            box-shadow: var(--box-shadow);
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 16px 20px;
+            max-width: 500px;
             width: 100%;
-            max-width: 700px;
-            max-height: 98vh;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-height: 99vh;
             overflow-y: auto;
         }
-
-        .submit-container::-webkit-scrollbar {
-            width: 4px;
-        }
-        .submit-container::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        .submit-container::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 10px;
-        }
-
-        .school-header {
+        .header {
             text-align: center;
             margin-bottom: 12px;
         }
-
-        .school-logo {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: var(--box-shadow);
-            margin-bottom: 8px;
-            object-fit: cover;
-        }
-
-        .school-title {
-            color: var(--dark);
+        .header h2 {
+            color: #2c3e50;
             font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 2px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
-
-        .school-subtitle {
-            color: var(--gray);
-            font-size: 12px;
-            font-weight: 400;
+        .header p {
+            color: #7f8c8d;
+            font-size: 13px;
         }
-
-        .divider {
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
-            width: 100px;
-            margin: 8px auto;
-            border-radius: 2px;
-        }
-
-        .form-title {
-            font-size: 22px;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 4px;
-            color: var(--dark);
-        }
-
-        .form-subtitle {
-            font-size: 12px;
-            color: var(--gray);
-            text-align: center;
-            margin-bottom: 12px;
-            background: #fff3cd;
-            padding: 6px 12px;
-            border-radius: 6px;
-            border-left: 3px solid #ffc107;
-        }
-
-        /* QR Scanner Container */
         #reader-container {
             width: 100%;
             position: relative;
             background: #000;
             border-radius: 10px;
             overflow: hidden;
-            min-height: 250px;
-            max-height: 350px;
-            margin-bottom: 10px;
-            display: none;
-        }
-        #reader-container.active {
-            display: block;
+            min-height: 300px;
+            max-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         #reader-container video {
             width: 100% !important;
@@ -146,656 +58,163 @@
             object-fit: cover !important;
             display: block;
         }
-
-        .qr-instruction {
+        #result {
+            margin-top: 12px;
             text-align: center;
-            padding: 12px 16px;
-            background: #f0f0ff;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border: 2px dashed #6c5ce7;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .qr-instruction:hover {
-            background: #e8e8ff;
-            border-color: #5a4bd1;
-        }
-        .qr-instruction i {
-            font-size: 28px;
-            color: #6c5ce7;
-            display: block;
-            margin-bottom: 4px;
-        }
-        .qr-instruction p {
-            font-size: 13px;
-            color: #2c3e50;
-            margin: 0;
-        }
-        .qr-instruction .sub-text {
-            font-size: 11px;
-            color: #6c757d;
-        }
-        .qr-instruction .scanning-text {
-            display: none;
-            color: #28a745;
-            font-weight: 600;
-        }
-        .qr-instruction.scanning .scanning-text {
-            display: block;
-        }
-        .qr-instruction.scanning .scan-prompt {
-            display: none;
-        }
-
-        .form-group {
-            margin-bottom: 10px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 500;
-            color: var(--dark);
-            font-size: 13px;
-        }
-
-        .form-label i {
-            margin-right: 6px;
-            color: var(--primary);
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 10px 14px;
+            min-height: 40px;
             font-size: 14px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
-            color: #495057;
         }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1);
-        }
-
-        .form-input.scanned {
-            background-color: #d4edda;
-            border-color: #28a745;
-        }
-
-        .form-hint {
-            font-size: 11px;
-            color: var(--gray);
-            margin-top: 3px;
-        }
-
-        .form-hint i {
-            margin-right: 4px;
-        }
-
-        .date-info {
-            background: #e8f4f8;
-            padding: 8px 12px;
-            border-radius: 6px;
-            margin-top: 6px;
-            font-size: 12px;
-            color: #0c5460;
-            border-left: 3px solid #17a2b8;
-            line-height: 1.5;
-        }
-
-        .date-info i {
-            margin-right: 6px;
-        }
-        .date-info small {
-            font-size: 11px;
-            display: block;
-            margin-top: 2px;
-        }
-
-        .scanned-badge {
-            display: inline-block;
-            background: #28a745;
-            color: white;
-            padding: 1px 10px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 600;
-            margin-left: 6px;
-            animation: fadeIn 0.5s ease;
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
+        .btn {
+            padding: 10px 20px;
             border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            margin-top: 4px;
-        }
-
-        .btn-submit:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(23, 162, 184, 0.3);
-        }
-
-        .btn-submit:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-scan-toggle {
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 8px;
+            border-radius: 30px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
             gap: 8px;
+            touch-action: manipulation;
+        }
+        .btn-primary {
             background: linear-gradient(135deg, #6c5ce7, #a29bfe);
             color: white;
-            margin-bottom: 10px;
         }
-        .btn-scan-toggle:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(108, 92, 231, 0.4);
+        .btn-primary:active { transform: scale(0.95); }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
         }
-        .btn-scan-toggle.scanning {
+        .btn-success:active { transform: scale(0.95); }
+        .btn-danger {
             background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
         }
-        .btn-scan-toggle:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
+        .btn-danger:active { transform: scale(0.95); }
+        
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
         }
-
-        .response-container {
-            padding: 12px 16px;
-            border-radius: 8px;
-            text-align: center;
+        .btn-group .btn { flex: 1; min-width: 80px; }
+        
+        .status-box {
+            padding: 8px 12px;
+            border-radius: 6px;
             margin: 8px 0;
-            transition: all 0.3s ease;
+            text-align: center;
             font-size: 13px;
         }
-
-        .response-container.success {
+        .status-success {
             background: #d4edda;
             color: #155724;
-            border-left: 4px solid #28a745;
+            border-left: 3px solid #28a745;
         }
-        .response-container.error {
-            background: #fee;
-            color: var(--danger);
-            border-left: 4px solid var(--danger);
-        }
-        .response-container.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border-left: 4px solid #17a2b8;
-        }
-        .response-container.warning {
-            background: #fff3cd;
-            color: #856404;
-            border-left: 4px solid #ffc107;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(23, 162, 184, 0.1);
-            border-top: 3px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .back-link {
-            text-align: center;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid #e9ecef;
-        }
-
-        .back-link a {
-            color: var(--primary);
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 13px;
-        }
-        .back-link a:hover {
-            text-decoration: underline;
-        }
-
-        .ready-message {
-            background: #d1ecf1;
-            padding: 6px 12px;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 12px;
-            color: #0c5460;
-            border-left: 4px solid #17a2b8;
-            margin-top: 6px;
-            display: none;
-            animation: fadeIn 0.5s ease;
-        }
-        .ready-message.show {
-            display: block;
-        }
-
-        .library-loading {
-            text-align: center;
-            padding: 12px;
-            background: #e8f4f8;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border: 2px solid #17a2b8;
-        }
-        .library-loading .spinner {
-            display: inline-block;
-            width: 28px;
-            height: 28px;
-            border: 4px solid rgba(23, 162, 184, 0.1);
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        .library-loading p {
-            margin-top: 6px;
-            color: var(--gray);
-            font-size: 13px;
-        }
-
-        .api-error {
+        .status-error {
             background: #f8d7da;
             color: #721c24;
-            padding: 10px;
-            border-radius: 6px;
-            text-align: center;
-            margin-bottom: 10px;
-            border-left: 4px solid #dc3545;
-            display: none;
+            border-left: 3px solid #dc3545;
         }
-        .api-error.show {
-            display: block;
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 3px solid #17a2b8;
         }
-
-        @media (max-width: 600px) {
-            .submit-wrapper { padding: 8px; }
-            .submit-container { padding: 14px 16px; }
-            .school-logo { width: 50px; height: 50px; }
-            .school-title { font-size: 17px; }
-            .school-subtitle { font-size: 10px; }
-            .form-title { font-size: 18px; }
-            .form-subtitle { font-size: 11px; padding: 4px 10px; }
-            .form-label { font-size: 12px; }
-            .form-input { padding: 8px 12px; font-size: 13px; }
-            .date-info { font-size: 11px; padding: 6px 10px; }
-            .btn-submit { padding: 10px; font-size: 14px; }
-            #reader-container { min-height: 200px; max-height: 280px; }
+        .hidden { display: none !important; }
+        
+        .scanned-data {
+            background: #d4edda;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #28a745;
+            margin: 8px 0;
+            text-align: left;
+            font-size: 13px;
         }
-
-        @media (max-height: 700px) {
-            .submit-container { padding: 12px 16px; }
-            .school-logo { width: 45px; height: 45px; }
-            .school-title { font-size: 16px; }
-            .form-title { font-size: 17px; }
-            .form-group { margin-bottom: 6px; }
-            .form-input { padding: 6px 10px; font-size: 12px; }
-            .date-info { font-size: 10px; padding: 4px 8px; }
-            .btn-submit { padding: 8px; font-size: 13px; }
-            #reader-container { min-height: 180px; max-height: 220px; }
-            .qr-instruction { padding: 6px 10px; }
-            .qr-instruction i { font-size: 20px; }
+        .scanned-data .label { font-weight: 600; color: #2c3e50; }
+        .scanned-data .value { color: #155724; font-weight: 500; }
+        
+        .scan-animation {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #2ecc71;
+            animation: pulse 1.5s ease-in-out infinite;
+            margin-right: 6px;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        @media (max-width: 500px) {
+            .container { padding: 12px 14px; }
+            #reader-container { min-height: 250px; max-height: 300px; }
+            .header h2 { font-size: 17px; }
         }
     </style>
 </head>
-
 <body>
-    <div class="submit-wrapper">
-        <div class="submit-container">
-            
-            <!-- School Header -->
-            <header class="school-header">
-                <img src="https://drive.google.com/thumbnail?id=1w5Bvzxx3IRWbyYO_YJ-4lasudTKwlo_2" 
-                     alt="School Logo" 
-                     class="school-logo"
-                     onerror="this.src='https://via.placeholder.com/60?text=MBHS'">
-                <h1 class="school-title">MUNTINLUPA BUSINESS HIGH SCHOOL</h1>
-                <p class="school-subtitle">TECHNICAL VOCATIONAL EDUCATION · ATTENDANCE</p>
-                <div class="divider"></div>
-            </header>
-
-            <h2 class="form-title">📋 Daily Attendance</h2>
-            <div class="form-subtitle">
-                <i class="fas fa-exclamation-triangle"></i> 
-                ISANG BESES lamang mag attendance sa bawat itinakdang petsa
-            </div>
-
-            <!-- API Error Display -->
-            <div class="api-error" id="apiError">
-                <i class="fas fa-exclamation-circle"></i>
-                <span id="apiErrorMessage">Connection error. Please try again.</span>
-            </div>
-
-            <!-- Library Loading Indicator -->
-            <div class="library-loading" id="libraryLoading">
-                <div class="spinner"></div>
-                <p><i class="fas fa-qrcode"></i> Loading QR Scanner...</p>
-                <p style="font-size: 11px; color: #6c757d;">Please wait</p>
-            </div>
-
-            <!-- QR Scanner Toggle Button -->
-            <button class="btn-scan-toggle" id="scanToggleBtn" disabled>
-                <i class="fas fa-qrcode"></i> <span id="scanToggleText">Open QR Scanner</span>
+    <div class="container">
+        <div class="header">
+            <h2>📷 QR Code Scanner</h2>
+            <p>Scan the QR code to mark attendance</p>
+        </div>
+        
+        <div id="statusMessage" class="status-box status-info">
+            <span class="scan-animation"></span> Initializing camera...
+        </div>
+        
+        <div id="reader-container">
+            <div id="reader"></div>
+        </div>
+        
+        <div id="result"></div>
+        
+        <div class="btn-group">
+            <button class="btn btn-primary" id="startBtn">
+                <i class="fas fa-camera"></i> Start
             </button>
-
-            <!-- QR Scanner Container -->
-            <div id="reader-container"></div>
-
-            <!-- QR Instruction -->
-            <div class="qr-instruction" id="qrInstruction">
-                <i class="fas fa-qrcode"></i>
-                <p class="scan-prompt"><strong>Tap "Open QR Scanner"</strong> to scan your QR code</p>
-                <p class="scanning-text"><i class="fas fa-spinner fa-spin"></i> Scanning... Please wait</p>
-                <p class="sub-text">The QR code contains your Email and LRN</p>
-            </div>
-
-            <!-- Ready Message -->
-            <div id="readyMessage" class="ready-message">
-                <i class="fas fa-check-circle"></i> Ready for next student. Scan another QR code.
-            </div>
-
-            <!-- Attendance Form -->
-            <form id="attendanceForm" onsubmit="event.preventDefault(); submitAttendance();">
-                <div class="form-group">
-                    <label class="form-label" for="email">
-                        <i class="fas fa-envelope"></i> Email Address
-                        <span id="emailScannedBadge" style="display: none;" class="scanned-badge">
-                            <i class="fas fa-check"></i> Scanned
-                        </span>
-                    </label>
-                    <input type="email" class="form-input" id="email" placeholder="Scan QR code or enter email" required>
-                    <div class="form-hint"><i class="fas fa-info-circle"></i> Auto-filled from QR code</div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="lrn">
-                        <i class="fas fa-id-card"></i> Learner Reference Number (LRN)
-                        <span id="lrnScannedBadge" style="display: none;" class="scanned-badge">
-                            <i class="fas fa-check"></i> Scanned
-                        </span>
-                    </label>
-                    <input type="text" class="form-input" id="lrn" maxlength="12" placeholder="Scan QR code or enter LRN" required>
-                    <div class="form-hint"><i class="fas fa-info-circle"></i> 12-digit LRN from your student ID</div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="attendanceDate">
-                        <i class="fas fa-calendar-day"></i> Attendance Date
-                    </label>
-                    <input type="date" class="form-input" id="attendanceDate" disabled>
-                    <div class="date-info" id="dateInfo">
-                        <i class="fas fa-info-circle"></i> Loading server date...
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-submit" id="submitBtn" disabled>
-                    <i class="fas fa-check-circle"></i> Submit Attendance
-                </button>
-            </form>
-
-            <!-- Response Message -->
-            <div id="responseMessage"></div>
-
-            <!-- Back to Portal Link -->
-            <div class="back-link">
-                <a href="javascript:void(0)" onclick="goBackToPortal()">
-                    <i class="fas fa-arrow-left"></i> Back to Portal
-                </a>
-            </div>
+            <button class="btn btn-danger hidden" id="stopBtn">
+                <i class="fas fa-stop"></i> Stop
+            </button>
+            <button class="btn btn-success hidden" id="sendBtn">
+                <i class="fas fa-paper-plane"></i> Send to Form
+            </button>
+        </div>
+        
+        <div style="margin-top: 12px; text-align: center; font-size: 11px; color: #95a5a6;">
+            <i class="fas fa-info-circle"></i> Point camera at QR code
         </div>
     </div>
 
-    <!-- Load QR Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
     <script>
         // ========================================
-        // CONFIGURATION
+        // QR SCANNER CONFIGURATION
         // ========================================
-        
-        // REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
-        const API_BASE_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-        
-        // ========================================
-        // STATE
-        // ========================================
-        
         let html5QrCode = null;
         let isScanning = false;
-        let isSubmitting = false;
-        let libraryLoaded = false;
-        let serverDate = '';
-        let serverTime = '';
-        let serverStatus = '';
-        let currentTimeFormatted = '';
+        let lastScannedData = '';
+        let scannedEmail = '';
+        let scannedLRN = '';
+        
+        const statusMessage = document.getElementById('statusMessage');
+        const resultDiv = document.getElementById('result');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const sendBtn = document.getElementById('sendBtn');
         
         // ========================================
-        // DOM REFS
+        // START SCANNER
         // ========================================
-        
-        const readerContainer = document.getElementById('reader-container');
-        const scanToggleBtn = document.getElementById('scanToggleBtn');
-        const scanToggleText = document.getElementById('scanToggleText');
-        const qrInstruction = document.getElementById('qrInstruction');
-        const libraryLoading = document.getElementById('libraryLoading');
-        const resultDiv = document.getElementById('responseMessage');
-        const apiError = document.getElementById('apiError');
-        const apiErrorMessage = document.getElementById('apiErrorMessage');
-        
-        // ========================================
-        // API CALLS TO GOOGLE APPS SCRIPT (JSONP)
-        // ========================================
-        
-        function callAPI(action, data = {}) {
-            return new Promise((resolve, reject) => {
-                // Create a unique callback name
-                const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-                
-                // Create the callback function
-                window[callbackName] = function(response) {
-                    try {
-                        // Clean up
-                        delete window[callbackName];
-                        const script = document.getElementById('jsonp_script_' + callbackName);
-                        if (script) script.remove();
-                        
-                        resolve(response);
-                    } catch (error) {
-                        reject(error);
-                    }
-                };
-                
-                // Build the URL
-                let url = API_BASE_URL + '?action=' + encodeURIComponent(action) + '&callback=' + encodeURIComponent(callbackName);
-                
-                // Add all data as URL parameters
-                for (const key in data) {
-                    if (data.hasOwnProperty(key) && data[key] !== undefined && data[key] !== null) {
-                        url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(data[key]);
-                    }
-                }
-                
-                // Create script tag
-                const script = document.createElement('script');
-                script.id = 'jsonp_script_' + callbackName;
-                script.src = url;
-                script.onerror = function() {
-                    delete window[callbackName];
-                    if (script.parentNode) script.parentNode.removeChild(script);
-                    reject(new Error('Network error or timeout'));
-                };
-                
-                // Timeout after 15 seconds
-                const timeout = setTimeout(function() {
-                    if (window[callbackName]) {
-                        delete window[callbackName];
-                        if (script.parentNode) script.parentNode.removeChild(script);
-                        reject(new Error('Request timeout'));
-                    }
-                }, 15000);
-                
-                // Override the callback to clear timeout
-                const originalCallback = window[callbackName];
-                window[callbackName] = function(response) {
-                    clearTimeout(timeout);
-                    originalCallback(response);
-                };
-                
-                document.head.appendChild(script);
-            });
-        }
-        
-        // ========================================
-        // API FUNCTIONS
-        // ========================================
-        
-        async function fetchServerDateTime() {
-            try {
-                return await callAPI('getServerDateTime');
-            } catch (error) {
-                console.error('Error fetching server date:', error);
-                showApiError('Failed to connect to server. Please check your internet connection.');
-                return null;
-            }
-        }
-        
-        async function fetchStudentByLRN(lrn) {
-            try {
-                return await callAPI('getStudent', { lrn: lrn });
-            } catch (error) {
-                console.error('Error fetching student:', error);
-                return null;
-            }
-        }
-        
-        async function checkTodayAttendance(lrn, date) {
-            try {
-                return await callAPI('checkAttendance', { lrn: lrn, date: date });
-            } catch (error) {
-                console.error('Error checking attendance:', error);
-                return null;
-            }
-        }
-        
-        async function submitAttendanceEntry(formData) {
-            try {
-                return await callAPI('submitAttendanceEntry', formData);
-            } catch (error) {
-                console.error('Error submitting attendance:', error);
-                return null;
-            }
-        }
-        
-        // ========================================
-        // LOAD QR LIBRARY
-        // ========================================
-        
-        function checkLibraryLoaded() {
-            if (typeof Html5Qrcode !== 'undefined') {
-                libraryLoaded = true;
-                libraryLoading.style.display = 'none';
-                scanToggleBtn.disabled = false;
-                scanToggleText.textContent = 'Open QR Scanner';
-                showMessage('✅ QR Scanner ready. Tap "Open QR Scanner" to start.', 'info');
-                return true;
-            }
-            return false;
-        }
-        
-        function waitForLibrary() {
-            if (checkLibraryLoaded()) {
-                return;
-            }
-            
-            let attempts = 0;
-            const maxAttempts = 15;
-            
-            const interval = setInterval(() => {
-                attempts++;
-                if (typeof Html5Qrcode !== 'undefined') {
-                    clearInterval(interval);
-                    libraryLoaded = true;
-                    libraryLoading.style.display = 'none';
-                    scanToggleBtn.disabled = false;
-                    scanToggleText.textContent = 'Open QR Scanner';
-                    showMessage('✅ QR Scanner ready. Tap "Open QR Scanner" to start.', 'info');
-                } else if (attempts >= maxAttempts) {
-                    clearInterval(interval);
-                    libraryLoading.innerHTML = `
-                        <div style="color: #e74c3c;">
-                            <i class="fas fa-exclamation-circle" style="font-size: 28px;"></i>
-                            <p style="font-weight: 600;">Failed to load QR library</p>
-                            <p style="font-size: 12px;">Please check your internet connection</p>
-                            <button onclick="location.reload()" class="btn-submit" style="margin-top: 8px; width: auto; padding: 6px 20px; background: linear-gradient(135deg, #6c5ce7, #a29bfe);">
-                                <i class="fas fa-sync-alt"></i> Refresh Page
-                            </button>
-                        </div>
-                    `;
-                    showMessage('❌ Failed to load QR scanner. Please refresh the page.', 'error');
-                }
-            }, 1500);
-        }
-        
-        // ========================================
-        // QR SCANNER
-        // ========================================
-        
-        function toggleScanner() {
-            if (isScanning) {
-                stopScanner();
-            } else {
-                startScanner();
-            }
-        }
-        
         function startScanner() {
-            if (!libraryLoaded) {
-                showMessage('⚠️ QR library not loaded yet. Please wait.', 'warning');
-                return;
-            }
-            
-            // Clean up existing scanner
             if (html5QrCode) {
                 try {
                     html5QrCode.stop().then(function() {
@@ -805,21 +224,24 @@
                 } catch(e) { html5QrCode = null; }
             }
             
-            scanToggleBtn.disabled = true;
-            scanToggleText.textContent = 'Opening camera...';
-            showMessage('📷 Starting camera...', 'info');
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            statusMessage.className = 'status-box status-info';
+            statusMessage.innerHTML = '<span class="scan-animation"></span> Opening camera...';
+            
+            if (typeof Html5Qrcode === 'undefined') {
+                statusMessage.className = 'status-box status-error';
+                statusMessage.innerHTML = '❌ QR library not loaded. Please refresh.';
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
+                return;
+            }
             
             try {
-                // Show scanner container
-                readerContainer.style.display = 'block';
-                readerContainer.innerHTML = '';
-                qrInstruction.classList.add('scanning');
-                scanToggleText.textContent = 'Stop Scanning';
-                scanToggleBtn.classList.add('scanning');
-                scanToggleBtn.innerHTML = '<i class="fas fa-stop"></i> <span id="scanToggleText">Stop Scanning</span>';
-                scanToggleBtn.disabled = false;
+                const readerElement = document.getElementById('reader');
+                readerElement.innerHTML = '';
                 
-                html5QrCode = new Html5Qrcode("reader-container");
+                html5QrCode = new Html5Qrcode("reader");
                 
                 const config = {
                     fps: 30,
@@ -834,7 +256,12 @@
                     onScanError
                 ).then(function() {
                     isScanning = true;
-                    showMessage('📷 Scanner active. Point camera at QR code.', 'success');
+                    statusMessage.className = 'status-box status-success';
+                    statusMessage.innerHTML = '✅ <span class="scan-animation"></span> Scanner active. Point at QR code.';
+                    startBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
                 }).catch(function(err) {
                     console.warn('Scanner error:', err.message);
                     let errorMsg = err.message;
@@ -843,94 +270,189 @@
                     } else if (errorMsg.includes('NotFoundError')) {
                         errorMsg = 'No camera found on this device.';
                     }
-                    showMessage('❌ ' + errorMsg, 'error');
-                    stopScanner();
+                    statusMessage.className = 'status-box status-error';
+                    statusMessage.innerHTML = '❌ ' + errorMsg;
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
                 });
             } catch (err) {
                 console.warn('Error:', err.message);
-                showMessage('❌ Failed to start: ' + err.message, 'error');
-                stopScanner();
+                statusMessage.className = 'status-box status-error';
+                statusMessage.innerHTML = '❌ Failed to start: ' + err.message;
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
             }
         }
         
+        // ========================================
+        // STOP SCANNER
+        // ========================================
         function stopScanner() {
             if (html5QrCode && isScanning) {
                 html5QrCode.stop().then(function() {
                     isScanning = false;
-                    readerContainer.style.display = 'none';
-                    qrInstruction.classList.remove('scanning');
-                    scanToggleBtn.classList.remove('scanning');
-                    scanToggleBtn.innerHTML = '<i class="fas fa-qrcode"></i> <span id="scanToggleText">Open QR Scanner</span>';
-                    showMessage('⏹️ Scanner stopped.', 'info');
+                    stopBtn.classList.add('hidden');
+                    startBtn.classList.remove('hidden');
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
+                    statusMessage.className = 'status-box status-info';
+                    statusMessage.innerHTML = '⏹️ Scanner stopped.';
                 }).catch(function() {});
             } else {
-                isScanning = false;
-                readerContainer.style.display = 'none';
-                qrInstruction.classList.remove('scanning');
-                scanToggleBtn.classList.remove('scanning');
-                scanToggleBtn.innerHTML = '<i class="fas fa-qrcode"></i> <span id="scanToggleText">Open QR Scanner</span>';
+                stopBtn.classList.add('hidden');
+                startBtn.classList.remove('hidden');
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-camera"></i> Start';
             }
+        }
+        
+        // ========================================
+        // SEND DATA TO ATTENDANCE FORM
+        // ========================================
+        function sendToAttendanceForm() {
+            if (!scannedEmail && !scannedLRN) {
+                resultDiv.innerHTML = '<div class="status-box status-error">❌ No QR code scanned yet.</div>';
+                return;
+            }
+            
+            // Build the data string
+            let dataToSend = '';
+            if (scannedEmail && scannedLRN) {
+                dataToSend = scannedEmail + '|' + scannedLRN;
+            } else if (scannedLRN) {
+                dataToSend = scannedLRN;
+            } else {
+                dataToSend = scannedEmail;
+            }
+            
+            console.log('📤 Sending data:', dataToSend);
+            
+            // Try to send to parent window (if in iframe)
+            if (window.parent && window.parent !== window) {
+                try {
+                    window.parent.postMessage({
+                        type: 'LRN_SCANNED',
+                        lrn: dataToSend
+                    }, '*');
+                    console.log('✅ Sent to parent window');
+                } catch(e) {
+                    console.warn('Could not send to parent:', e);
+                }
+            }
+            
+            // Try to send to opener (if opened as popup)
+            if (window.opener && window.opener !== window) {
+                try {
+                    window.opener.postMessage({
+                        type: 'LRN_SCANNED',
+                        lrn: dataToSend
+                    }, '*');
+                    console.log('✅ Sent to opener window');
+                } catch(e) {
+                    console.warn('Could not send to opener:', e);
+                }
+            }
+            
+            // Also try to send to all parent windows
+            try {
+                window.postMessage({
+                    type: 'LRN_SCANNED',
+                    lrn: dataToSend
+                }, '*');
+                console.log('✅ Sent to current window');
+            } catch(e) {
+                console.warn('Could not send to current:', e);
+            }
+            
+            // Show success message
+            resultDiv.innerHTML = `
+                <div class="status-box status-success">
+                    <i class="fas fa-check-circle"></i> 
+                    Data sent to attendance form!<br>
+                    <small style="font-size: 11px; color: #6c757d;">
+                        You can close this window now.
+                    </small>
+                </div>
+            `;
+            
+            sendBtn.classList.add('hidden');
+            
+            // Try to close the window after 2 seconds
+            setTimeout(function() {
+                try {
+                    window.close();
+                } catch(e) {
+                    console.log('Window will stay open (not opened by script)');
+                }
+            }, 2000);
         }
         
         // ========================================
         // SCAN SUCCESS
         // ========================================
-        
         function onScanSuccess(decodedText, decodedResult) {
+            // Prevent duplicate scans
+            if (lastScannedData === decodedText) {
+                return;
+            }
+            lastScannedData = decodedText;
+            
             console.log('📋 QR Scanned:', decodedText);
             
+            // Parse the QR data
             let email = '';
             let lrn = '';
             
-            // Parse the QR data - Format: email|LRN
             if (decodedText.includes('|')) {
                 const parts = decodedText.split('|');
                 email = parts[0]?.trim() || '';
                 lrn = parts[1]?.trim() || '';
             } else if (/^\d{12}$/.test(decodedText)) {
                 lrn = decodedText;
+            } else if (decodedText.includes('@')) {
+                email = decodedText;
             } else {
                 // Try to find LRN in the text
                 const lrnMatch = decodedText.match(/\d{12}/);
                 if (lrnMatch) {
                     lrn = lrnMatch[0];
                 }
-                // Try to find email
-                const emailMatch = decodedText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-                if (emailMatch) {
-                    email = emailMatch[0];
-                }
             }
             
-            // Validate and fill the form
-            if (lrn && /^\d{12}$/.test(lrn)) {
-                const lrnField = document.getElementById('lrn');
-                lrnField.value = lrn;
-                lrnField.classList.add('scanned');
-                document.getElementById('lrnScannedBadge').style.display = 'inline-block';
-            } else {
-                showMessage('❌ Invalid QR Code. LRN must be 12 digits: ' + lrn, 'error');
-                return;
+            scannedEmail = email;
+            scannedLRN = lrn;
+            
+            // Show scanned data
+            let html = `
+                <div class="scanned-data">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-weight: 600; color: #28a745;">
+                            <i class="fas fa-check-circle"></i> QR Code Detected!
+                        </span>
+                        <span style="font-size: 11px; color: #6c757d;">${new Date().toLocaleTimeString()}</span>
+                    </div>
+            `;
+            
+            if (email) {
+                html += `<div><span class="label">📧 Email:</span> <span class="value">${email}</span></div>`;
+            }
+            if (lrn) {
+                html += `<div><span class="label">🔢 LRN:</span> <span class="value">${lrn}</span></div>`;
+            }
+            if (!email && !lrn) {
+                html += `<div><span class="label">📋 Raw Data:</span> <span class="value">${decodedText}</span></div>`;
             }
             
-            if (email && email.includes('@')) {
-                const emailField = document.getElementById('email');
-                emailField.value = email;
-                emailField.classList.add('scanned');
-                document.getElementById('emailScannedBadge').style.display = 'inline-block';
-                showMessage('✅ QR Code scanned! Email and LRN filled.', 'success');
-            } else {
-                // Try to get email from server using LRN
-                fetchStudentEmail(lrn);
-            }
+            html += `</div>`;
+            resultDiv.innerHTML = html;
             
-            // Enable submit button
-            document.getElementById('submitBtn').disabled = false;
+            // Show send button
+            sendBtn.classList.remove('hidden');
             
-            // Auto-submit after scan
+            // Auto-send after 1 second
             setTimeout(function() {
-                submitAttendance();
-            }, 800);
+                sendToAttendanceForm();
+            }, 1000);
         }
         
         function onScanError(errorMessage) {
@@ -938,366 +460,55 @@
         }
         
         // ========================================
-        // FETCH STUDENT EMAIL
+        // EVENT LISTENERS
         // ========================================
-        
-        async function fetchStudentEmail(lrn) {
-            try {
-                const response = await fetchStudentByLRN(lrn);
-                if (response && response.email && response.email.includes('@')) {
-                    const emailField = document.getElementById('email');
-                    emailField.value = response.email;
-                    emailField.classList.add('scanned');
-                    document.getElementById('emailScannedBadge').style.display = 'inline-block';
-                    showMessage('✅ Student found: ' + (response.name || '') + ' | LRN: ' + lrn, 'success');
-                    document.getElementById('submitBtn').disabled = false;
-                }
-            } catch (error) {
-                console.warn('Could not fetch student email:', error);
-            }
-        }
+        startBtn.addEventListener('click', startScanner);
+        stopBtn.addEventListener('click', stopScanner);
+        sendBtn.addEventListener('click', sendToAttendanceForm);
         
         // ========================================
-        // CHECK AND SUBMIT ATTENDANCE
+        // START ON PAGE LOAD
         // ========================================
-        
-        async function checkAndSubmitAttendance(email, lrn) {
-            if (isSubmitting) return;
-            isSubmitting = true;
-            
-            const attendanceDate = document.getElementById('attendanceDate').value;
-            const submitBtn = document.getElementById('submitBtn');
-            
-            showMessage('⏳ Checking if you already attended...', 'info');
-            
-            try {
-                const checkResult = await checkTodayAttendance(lrn, attendanceDate);
-                
-                if (checkResult && checkResult.attended === true) {
-                    const todayFormatted = formatPhilippinesDate(attendanceDate);
-                    showMessage(`
-                        <div style="text-align: left;">
-                            <i class="fas fa-check-circle" style="color: #28a745; font-size: 20px;"></i>
-                            <strong style="font-size: 15px; display: block; margin-top: 4px;">You're all set!</strong>
-                            <p style="margin: 6px 0;">You have already marked your attendance for today:</p>
-                            <p style="background: white; padding: 8px; border-radius: 6px; margin: 4px 0;">
-                                <strong>📧 Email:</strong> ${email}<br>
-                                <strong>🔢 LRN:</strong> ${lrn}<br>
-                                <strong>📅 Date:</strong> ${todayFormatted}
-                            </p>
-                            <p style="font-size: 12px; color: #6c757d; margin-top: 4px;">
-                                <i class="fas fa-clock"></i> No need to submit again for today.
-                            </p>
-                        </div>
-                    `, 'success');
-                    
-                    submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Already Submitted';
-                    
+        window.addEventListener('DOMContentLoaded', function() {
+            function checkLibraryAndStart() {
+                if (typeof Html5Qrcode !== 'undefined') {
+                    statusMessage.className = 'status-box status-info';
+                    statusMessage.innerHTML = '📷 Ready. Starting camera...';
                     setTimeout(function() {
-                        clearAttendanceForm();
-                        isSubmitting = false;
-                    }, 4000);
-                    
+                        startScanner();
+                    }, 500);
                 } else {
-                    await proceedWithSubmission(email, lrn, attendanceDate);
+                    setTimeout(checkLibraryAndStart, 300);
                 }
-            } catch (error) {
-                showMessage('❌ Error checking attendance: ' + error.message, 'error');
-                submitBtn.disabled = false;
-                isSubmitting = false;
             }
-        }
+            setTimeout(checkLibraryAndStart, 500);
+        });
         
-        async function proceedWithSubmission(email, lrn, attendanceDate) {
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-            showMessage('⏳ Submitting your attendance...', 'info');
-            
-            let finalStatus = 'P';
-            
-            if (serverStatus === 'EARLY') {
-                showMessage(`⏰ Too early! Attendance starts at 5:30 AM. Current time: ${currentTimeFormatted}`, 'warning');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Submit Attendance';
-                isSubmitting = false;
-                return;
-            } else if (serverStatus === 'P') {
-                finalStatus = 'P';
-            } else if (serverStatus === 'L') {
-                finalStatus = 'L';
-            } else {
-                const timeInfo = getCurrentHourMinute();
-                const statusCheck = getAttendanceStatus(timeInfo);
-                if (statusCheck.status === 'EARLY') {
-                    showMessage('⏰ Too early! Attendance starts at 5:30 AM.', 'warning');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Submit Attendance';
-                    isSubmitting = false;
-                    return;
-                }
-                finalStatus = statusCheck.status === 'P' ? 'P' : 'L';
-            }
-            
-            const formData = {
-                email: email,
-                lrn: lrn,
-                attendanceDate: attendanceDate,
-                status: finalStatus
-            };
-            
-            try {
-                const response = await submitAttendanceEntry(formData);
-                
-                if (response && response.message) {
-                    showMessage(response.message, 'success');
-                } else {
-                    showMessage('✅ Attendance submitted successfully!', 'success');
-                }
-                
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Submit Attendance';
-                
-                setTimeout(function() {
-                    clearAttendanceForm();
-                    isSubmitting = false;
-                }, 3000);
-                
-            } catch (error) {
-                showMessage('❌ Error submitting attendance: ' + error.message, 'error');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Submit Attendance';
-                isSubmitting = false;
-            }
-        }
+        window.addEventListener('beforeunload', function() {
+            stopScanner();
+        });
         
-        // ========================================
-        // GET SERVER DATE AND TIME
-        // ========================================
-        
-        async function loadServerDateTime() {
-            const dateInfo = document.getElementById('dateInfo');
-            dateInfo.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Loading server date and time...`;
-            
-            try {
-                const data = await fetchServerDateTime();
-                if (data) {
-                    serverDate = data.date;
-                    serverTime = data.time;
-                    serverStatus = data.status;
-                    currentTimeFormatted = data.timeFormatted || data.time;
-                    
-                    const dateInput = document.getElementById('attendanceDate');
-                    dateInput.value = serverDate;
-                    dateInput.setAttribute('min', serverDate);
-                    dateInput.setAttribute('max', serverDate);
-                    dateInput.readOnly = true;
-                    
-                    const todayFormatted = formatPhilippinesDate(serverDate);
-                    const statusLabel = serverStatus === 'P' ? 'On Time' : (serverStatus === 'L' ? 'LATE' : serverStatus);
-                    const statusColor = serverStatus === 'P' ? '#28a745' : (serverStatus === 'L' ? '#f39c12' : '#17a2b8');
-                    
-                    document.getElementById('dateInfo').innerHTML = `
-                        <i class="fas fa-calendar-check"></i> 
-                        <strong>Today:</strong> ${todayFormatted}<br>
-                        <strong>Time:</strong> ${currentTimeFormatted} 
-                        <span style="display:inline-block; margin-left:8px; padding:2px 8px; background:${statusColor}; color:white; border-radius:12px; font-size:10px; font-weight:600;">
-                            ${statusLabel}
-                        </span>
-                        <small style="display:block; margin-top:2px; color:#6c757d;">
-                            <i class="fas fa-clock"></i> Attendance: 5:30 AM - 6:15 AM
+        // Listen for messages from parent (to confirm data received)
+        window.addEventListener('message', function(event) {
+            console.log('📨 Message received in scanner:', event.data);
+            if (event.data && event.data.type === 'SCAN_CONFIRMED') {
+                // Data was received by the attendance form
+                console.log('✅ Attendance form confirmed receipt');
+                resultDiv.innerHTML = `
+                    <div class="status-box status-success">
+                        <i class="fas fa-check-circle"></i> 
+                        ✅ Data received by attendance form!<br>
+                        <small style="font-size: 11px; color: #6c757d;">
+                            You can close this window now.
                         </small>
-                    `;
-                } else {
-                    loadClientDate();
-                }
-            } catch (error) {
-                console.error('Error loading server date:', error);
-                loadClientDate();
+                    </div>
+                `;
+                sendBtn.classList.add('hidden');
+                setTimeout(function() {
+                    try { window.close(); } catch(e) {}
+                }, 1500);
             }
-        }
-        
-        function loadClientDate() {
-            const now = new Date();
-            const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-            const today = phTime.toISOString().split('T')[0];
-            
-            const dateInput = document.getElementById('attendanceDate');
-            dateInput.value = today;
-            dateInput.setAttribute('min', today);
-            dateInput.setAttribute('max', today);
-            dateInput.readOnly = true;
-            
-            const todayFormatted = formatPhilippinesDate(today);
-            const timeInfo = getCurrentHourMinute();
-            const attendanceStatus = getAttendanceStatus(timeInfo);
-            const currentTime = `${timeInfo.hour.toString().padStart(2, '0')}:${timeInfo.minute.toString().padStart(2, '0')}`;
-            
-            document.getElementById('dateInfo').innerHTML = `
-                <i class="fas fa-calendar-check"></i> 
-                <strong>Today:</strong> ${todayFormatted}<br>
-                <strong>Time:</strong> ${currentTime} 
-                <span style="display:inline-block; margin-left:8px; padding:2px 8px; background:${attendanceStatus.status === 'P' ? '#28a745' : (attendanceStatus.status === 'L' ? '#f39c12' : '#17a2b8')}; color:white; border-radius:12px; font-size:10px; font-weight:600;">
-                    ${attendanceStatus.message}
-                </span>
-                <small style="display:block; margin-top:2px; color:#6c757d;">
-                    <i class="fas fa-clock"></i> Attendance: 5:30 AM - 6:15 AM
-                </small>
-            `;
-        }
-        
-        function getCurrentHourMinute() {
-            const now = new Date();
-            const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-            return {
-                hour: phTime.getHours(),
-                minute: phTime.getMinutes(),
-                totalMinutes: phTime.getHours() * 60 + phTime.getMinutes()
-            };
-        }
-        
-        function getAttendanceStatus(timeInfo) {
-            const currentMinutes = timeInfo.totalMinutes;
-            const START_WINDOW = 330;    // 5:30 AM
-            const END_WINDOW = 375;      // 6:15 AM
-            
-            if (currentMinutes < START_WINDOW) {
-                return { status: 'EARLY', message: '⏰ Too early!' };
-            } else if (currentMinutes >= START_WINDOW && currentMinutes <= END_WINDOW) {
-                return { status: 'P', message: '✓ On Time' };
-            } else {
-                return { status: 'L', message: '⏰ LATE' };
-            }
-        }
-        
-        function formatPhilippinesDate(dateString) {
-            if (!dateString) return 'Today';
-            try {
-                const date = new Date(dateString + 'T00:00:00');
-                return date.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    timeZone: 'Asia/Manila'
-                });
-            } catch(e) {
-                return dateString;
-            }
-        }
-        
-        // ========================================
-        // CLEAR FORM FUNCTION
-        // ========================================
-        
-        function clearAttendanceForm() {
-            const emailField = document.getElementById('email');
-            const lrnField = document.getElementById('lrn');
-            
-            emailField.value = '';
-            emailField.classList.remove('scanned');
-            lrnField.value = '';
-            lrnField.classList.remove('scanned');
-            
-            document.getElementById('emailScannedBadge').style.display = 'none';
-            document.getElementById('lrnScannedBadge').style.display = 'none';
-            
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Submit Attendance';
-            
-            document.getElementById('responseMessage').innerHTML = '';
-            
-            const readyMsg = document.getElementById('readyMessage');
-            readyMsg.className = 'ready-message show';
-            
-            setTimeout(function() {
-                readyMsg.className = 'ready-message';
-            }, 4000);
-        }
-        
-        // ========================================
-        // SUBMIT ATTENDANCE
-        // ========================================
-        
-        function submitAttendance() {
-            const email = document.getElementById('email').value.trim();
-            const lrn = document.getElementById('lrn').value.trim();
-            const attendanceDate = document.getElementById('attendanceDate').value;
-            
-            if (!lrn || !/^\d{12}$/.test(lrn)) {
-                showMessage('🔢 Please enter a valid 12-digit LRN or scan a QR code.', 'warning');
-                return;
-            }
-            
-            if (!email || !email.includes('@')) {
-                showMessage('📧 Please enter a valid email address or scan a QR code.', 'warning');
-                return;
-            }
-            
-            checkAndSubmitAttendance(email, lrn);
-        }
-        
-        function showMessage(message, type) {
-            let className = 'info';
-            
-            if (type === 'error') {
-                className = 'error';
-            } else if (type === 'warning') {
-                className = 'warning';
-            } else if (type === 'success') {
-                className = 'success';
-            }
-            
-            document.getElementById('responseMessage').innerHTML = `
-                <div class="response-container ${className}">
-                    <div class="response-content">${message}</div>
-                </div>
-            `;
-        }
-        
-        function showApiError(message) {
-            apiError.classList.add('show');
-            apiErrorMessage.textContent = message;
-            setTimeout(() => {
-                apiError.classList.remove('show');
-            }, 8000);
-        }
-        
-        // ========================================
-        // GO BACK TO PORTAL
-        // ========================================
-        
-        function goBackToPortal() {
-            // Try to close the window or navigate back
-            try {
-                window.close();
-            } catch(e) {
-                // If window.close() fails, try to go back
-                window.history.back();
-            }
-        }
-        
-        // ========================================
-        // INIT
-        // ========================================
-        
-        window.onload = function() {
-            loadServerDateTime();
-            scanToggleBtn.addEventListener('click', toggleScanner);
-            waitForLibrary();
-            
-            // Allow Enter key to submit
-            document.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    const target = e.target;
-                    if (target.id === 'lrn' || target.id === 'email') {
-                        submitAttendance();
-                    }
-                }
-            });
-        };
+        });
     </script>
 </body>
 </html>
