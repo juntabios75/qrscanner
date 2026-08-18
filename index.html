@@ -596,7 +596,6 @@
         
         // REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
         const API_BASE_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-        // Or use: const API_BASE_URL = 'YOUR_APPS_SCRIPT_URL';
         
         // ========================================
         // STATE
@@ -625,72 +624,66 @@
         const apiErrorMessage = document.getElementById('apiErrorMessage');
         
         // ========================================
-        // API CALLS TO GOOGLE APPS SCRIPT
+        // API CALLS TO GOOGLE APPS SCRIPT (JSONP)
         // ========================================
         
-        async function callAPI(action, data = {}) {
-            try {
-                const formData = new FormData();
-                formData.append('action', action);
+        function callAPI(action, data = {}) {
+            return new Promise((resolve, reject) => {
+                // Create a unique callback name
+                const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
                 
-                // Add all data fields to FormData
+                // Create the callback function
+                window[callbackName] = function(response) {
+                    try {
+                        // Clean up
+                        delete window[callbackName];
+                        const script = document.getElementById('jsonp_script_' + callbackName);
+                        if (script) script.remove();
+                        
+                        resolve(response);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                
+                // Build the URL
+                let url = API_BASE_URL + '?action=' + encodeURIComponent(action) + '&callback=' + encodeURIComponent(callbackName);
+                
+                // Add all data as URL parameters
                 for (const key in data) {
                     if (data.hasOwnProperty(key) && data[key] !== undefined && data[key] !== null) {
-                        formData.append(key, data[key]);
+                        url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(data[key]);
                     }
                 }
                 
-                const response = await fetch(API_BASE_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // For cross-origin requests to Apps Script
-                    body: formData
-                });
+                // Create script tag
+                const script = document.createElement('script');
+                script.id = 'jsonp_script_' + callbackName;
+                script.src = url;
+                script.onerror = function() {
+                    delete window[callbackName];
+                    if (script.parentNode) script.parentNode.removeChild(script);
+                    reject(new Error('Network error or timeout'));
+                };
                 
-                // Since we're using no-cors, we can't read the response directly
-                // We need to use a different approach with JSONP or redirect
-                // Let's use a different method: script injection
-                
-                return await new Promise((resolve, reject) => {
-                    // Create a callback function name
-                    const callbackName = 'callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-                    
-                    // Create the callback function
-                    window[callbackName] = function(response) {
+                // Timeout after 15 seconds
+                const timeout = setTimeout(function() {
+                    if (window[callbackName]) {
                         delete window[callbackName];
-                        resolve(response);
-                    };
-                    
-                    // Create script tag
-                    const script = document.createElement('script');
-                    const url = API_BASE_URL + '?action=' + encodeURIComponent(action);
-                    // Add all data as URL parameters
-                    for (const key in data) {
-                        if (data.hasOwnProperty(key) && data[key] !== undefined && data[key] !== null) {
-                            url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(data[key]);
-                        }
+                        if (script.parentNode) script.parentNode.removeChild(script);
+                        reject(new Error('Request timeout'));
                     }
-                    url += '&callback=' + callbackName;
-                    script.src = url;
-                    script.onerror = function() {
-                        delete window[callbackName];
-                        reject(new Error('Network error'));
-                    };
-                    document.head.appendChild(script);
-                    
-                    // Clean up after 10 seconds
-                    setTimeout(() => {
-                        if (window[callbackName]) {
-                            delete window[callbackName];
-                            reject(new Error('Request timeout'));
-                        }
-                    }, 10000);
-                });
+                }, 15000);
                 
-            } catch (error) {
-                console.error('API Error:', error);
-                showApiError(error.message);
-                throw error;
-            }
+                // Override the callback to clear timeout
+                const originalCallback = window[callbackName];
+                window[callbackName] = function(response) {
+                    clearTimeout(timeout);
+                    originalCallback(response);
+                };
+                
+                document.head.appendChild(script);
+            });
         }
         
         // ========================================
@@ -699,18 +692,17 @@
         
         async function fetchServerDateTime() {
             try {
-                const response = await callAPI('getServerDateTime');
-                return response;
+                return await callAPI('getServerDateTime');
             } catch (error) {
                 console.error('Error fetching server date:', error);
+                showApiError('Failed to connect to server. Please check your internet connection.');
                 return null;
             }
         }
         
         async function fetchStudentByLRN(lrn) {
             try {
-                const response = await callAPI('getStudentByLRN', { lrn: lrn });
-                return response;
+                return await callAPI('getStudent', { lrn: lrn });
             } catch (error) {
                 console.error('Error fetching student:', error);
                 return null;
@@ -719,8 +711,7 @@
         
         async function checkTodayAttendance(lrn, date) {
             try {
-                const response = await callAPI('checkTodayAttendance', { lrn: lrn, date: date });
-                return response;
+                return await callAPI('checkAttendance', { lrn: lrn, date: date });
             } catch (error) {
                 console.error('Error checking attendance:', error);
                 return null;
@@ -729,8 +720,7 @@
         
         async function submitAttendanceEntry(formData) {
             try {
-                const response = await callAPI('submitAttendanceEntry', formData);
-                return response;
+                return await callAPI('submitAttendanceEntry', formData);
             } catch (error) {
                 console.error('Error submitting attendance:', error);
                 return null;
@@ -758,14 +748,8 @@
                 return;
             }
             
-            libraryLoading.innerHTML = `
-                <div class="spinner"></div>
-                <p><i class="fas fa-qrcode"></i> Loading QR Scanner...</p>
-                <p style="font-size: 11px; color: #6c757d;">Attempt ${attempts + 1}/10</p>
-            `;
-            
             let attempts = 0;
-            const maxAttempts = 10;
+            const maxAttempts = 15;
             
             const interval = setInterval(() => {
                 attempts++;
@@ -989,7 +973,7 @@
             try {
                 const checkResult = await checkTodayAttendance(lrn, attendanceDate);
                 
-                if (checkResult === 'ALREADY_ATTENDED') {
+                if (checkResult && checkResult.attended === true) {
                     const todayFormatted = formatPhilippinesDate(attendanceDate);
                     showMessage(`
                         <div style="text-align: left;">
@@ -1015,12 +999,8 @@
                         isSubmitting = false;
                     }, 4000);
                     
-                } else if (checkResult === 'NOT_ATTENDED') {
-                    await proceedWithSubmission(email, lrn, attendanceDate);
                 } else {
-                    showMessage(checkResult || 'Unknown response from server', 'info');
-                    submitBtn.disabled = false;
-                    isSubmitting = false;
+                    await proceedWithSubmission(email, lrn, attendanceDate);
                 }
             } catch (error) {
                 showMessage('❌ Error checking attendance: ' + error.message, 'error');
@@ -1069,18 +1049,21 @@
             
             try {
                 const response = await submitAttendanceEntry(formData);
-                showMessage(response || '✅ Attendance submitted successfully!', 'success');
+                
+                if (response && response.message) {
+                    showMessage(response.message, 'success');
+                } else {
+                    showMessage('✅ Attendance submitted successfully!', 'success');
+                }
+                
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Submit Attendance';
                 
-                if (response && (response.includes('successfully') || response.includes('✅'))) {
-                    setTimeout(function() {
-                        clearAttendanceForm();
-                        isSubmitting = false;
-                    }, 3000);
-                } else {
+                setTimeout(function() {
+                    clearAttendanceForm();
                     isSubmitting = false;
-                }
+                }, 3000);
+                
             } catch (error) {
                 showMessage('❌ Error submitting attendance: ' + error.message, 'error');
                 submitBtn.disabled = false;
@@ -1287,23 +1270,12 @@
         // ========================================
         
         function goBackToPortal() {
-            // Check if we're in an iframe
-            if (window.parent && window.parent !== window) {
-                // Try to tell parent to navigate back
-                try {
-                    window.parent.postMessage({
-                        type: 'NAVIGATE_BACK'
-                    }, '*');
-                } catch(e) {
-                    window.location.href = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
-                }
-            } else {
-                // Try to close the window or navigate back
-                try {
-                    window.close();
-                } catch(e) {
-                    window.history.back();
-                }
+            // Try to close the window or navigate back
+            try {
+                window.close();
+            } catch(e) {
+                // If window.close() fails, try to go back
+                window.history.back();
             }
         }
         
