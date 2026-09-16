@@ -65,8 +65,6 @@
         }
         .btn-primary { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; }
         .btn-primary:active { transform: scale(0.95); }
-        .btn-success { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
-        .btn-success:active { transform: scale(0.95); }
         .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; }
         .btn-danger:active { transform: scale(0.95); }
         .btn-group {
@@ -155,15 +153,15 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         // ========================================
-        // QR SCANNER CONFIGURATION
+        // STATE
         // ========================================
         let html5QrCode = null;
         let isScanning = false;
         let lastScannedData = '';
         let scannedEmail = '';
         let scannedLRN = '';
-        let scanLocked = false;         // ← NEW: prevents scanning again before form confirms
-        let confirmationTimeout = null; // ← NEW: safety timer in case parent never replies
+        let scanLocked = false;         // true while waiting for form confirmation
+        let confirmationTimeout = null;
 
         const statusMessage = document.getElementById('statusMessage');
         const resultDiv = document.getElementById('result');
@@ -197,9 +195,7 @@
             }
 
             try {
-                const readerElement = document.getElementById('reader');
-                readerElement.innerHTML = '';
-
+                document.getElementById('reader').innerHTML = '';
                 html5QrCode = new Html5Qrcode("reader");
 
                 const config = {
@@ -216,6 +212,9 @@
                 ).then(function() {
                     isScanning = true;
                     scanLocked = false;
+                    lastScannedData = '';
+                    scannedEmail = '';
+                    scannedLRN = '';
                     statusMessage.className = 'status-box status-success';
                     statusMessage.innerHTML = '✅ <span class="scan-animation"></span> Scanner active. Point at QR code.';
                     startBtn.classList.add('hidden');
@@ -225,18 +224,14 @@
                 }).catch(function(err) {
                     console.warn('Scanner error:', err.message);
                     let errorMsg = err.message;
-                    if (errorMsg.includes('NotAllowedError')) {
-                        errorMsg = 'Camera access denied. Please allow camera access.';
-                    } else if (errorMsg.includes('NotFoundError')) {
-                        errorMsg = 'No camera found on this device.';
-                    }
+                    if (errorMsg.includes('NotAllowedError')) errorMsg = 'Camera access denied. Please allow camera access.';
+                    else if (errorMsg.includes('NotFoundError')) errorMsg = 'No camera found on this device.';
                     statusMessage.className = 'status-box status-error';
                     statusMessage.innerHTML = '❌ ' + errorMsg;
                     startBtn.disabled = false;
                     startBtn.innerHTML = '<i class="fas fa-camera"></i> Retry';
                 });
             } catch (err) {
-                console.warn('Error:', err.message);
                 statusMessage.className = 'status-box status-error';
                 statusMessage.innerHTML = '❌ Failed to start: ' + err.message;
                 startBtn.disabled = false;
@@ -267,102 +262,82 @@
         }
 
         // ========================================
-        // SEND DATA TO ATTENDANCE FORM
+        // SEND DATA TO FORM
         // ========================================
         function sendToAttendanceForm() {
-            if (!scannedEmail && !scannedLRN) {
-                resultDiv.innerHTML = '<div class="status-box status-error">❌ No QR code scanned yet.</div>';
-                return;
-            }
+            if (!scannedEmail && !scannedLRN) return;
 
-            // Build the data string
             let dataToSend = '';
-            if (scannedEmail && scannedLRN) {
-                dataToSend = scannedEmail + '|' + scannedLRN;
-            } else if (scannedLRN) {
-                dataToSend = scannedLRN;
-            } else {
-                dataToSend = scannedEmail;
-            }
+            if (scannedEmail && scannedLRN) dataToSend = scannedEmail + '|' + scannedLRN;
+            else if (scannedLRN) dataToSend = scannedLRN;
+            else dataToSend = scannedEmail;
 
-            console.log('📤 Sending data:', dataToSend);
-
-            // Send to parent window (iframe)
-            if (window.parent && window.parent !== window) {
-                try {
-                    window.parent.postMessage({ type: 'LRN_SCANNED', lrn: dataToSend }, '*');
-                    console.log('✅ Sent to parent window');
-                } catch(e) { console.warn('Could not send to parent:', e); }
-            }
-
-            // Send to opener window (popup)
+            // Send to opener (popup) and parent (iframe)
             if (window.opener && window.opener !== window) {
-                try {
-                    window.opener.postMessage({ type: 'LRN_SCANNED', lrn: dataToSend }, '*');
-                    console.log('✅ Sent to opener window');
-                } catch(e) { console.warn('Could not send to opener:', e); }
+                try { window.opener.postMessage({ type: 'LRN_SCANNED', lrn: dataToSend }, '*'); } catch(e) {}
+            }
+            if (window.parent && window.parent !== window) {
+                try { window.parent.postMessage({ type: 'LRN_SCANNED', lrn: dataToSend }, '*'); } catch(e) {}
             }
 
-            // Also self-post (harmless, sometimes useful)
-            try {
-                window.postMessage({ type: 'LRN_SCANNED', lrn: dataToSend }, '*');
-            } catch(e) {}
-
-            // ─────────────────────────────────────────────
-            // IMPORTANT: DO NOT close here.
-            // We wait for the attendance form to send SCAN_CONFIRMED.
-            // ─────────────────────────────────────────────
             resultDiv.innerHTML = `
                 <div class="status-box status-info">
-                    <i class="fas fa-spinner fa-spin"></i> 
+                    <i class="fas fa-spinner fa-spin"></i>
                     Data sent — waiting for form to confirm...<br>
                     <small style="font-size: 11px; color: #6c757d;">
                         Please do NOT scan another QR code.
                     </small>
                 </div>
             `;
-
             statusMessage.className = 'status-box status-warning';
             statusMessage.innerHTML = '⏳ Waiting for submission to complete...';
 
-            // Safety net: if parent never confirms within 20 seconds,
-            // unlock the scanner so the user isn't stuck forever.
+            // Safety net
             if (confirmationTimeout) clearTimeout(confirmationTimeout);
             confirmationTimeout = setTimeout(function() {
                 if (scanLocked) {
-                    console.warn('⚠️ No SCAN_CONFIRMED received within 20s — unlocking scanner.');
-                    scanLocked = false;
-                    lastScannedData = '';
-                    resultDiv.innerHTML = `
-                        <div class="status-box status-error">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            No response from attendance form.<br>
-                            <small style="font-size: 11px;">You may scan again or close this window.</small>
-                        </div>
-                    `;
-                    statusMessage.className = 'status-box status-info';
-                    statusMessage.innerHTML = '✅ <span class="scan-animation"></span> Scanner ready again.';
+                    console.warn('⚠️ No confirmation within 20s — unlocking.');
+                    resetScannerForNextStudent('⚠️ No response from form. Ready to scan again.');
                 }
             }, 20000);
+        }
+
+        // ========================================
+        // RESET SCANNER FOR NEXT STUDENT (keeps window open)
+        // ========================================
+        function resetScannerForNextStudent(message) {
+            if (confirmationTimeout) { clearTimeout(confirmationTimeout); confirmationTimeout = null; }
+            scanLocked = false;
+            lastScannedData = '';
+            scannedEmail = '';
+            scannedLRN = '';
+
+            resultDiv.innerHTML = `
+                <div class="status-box status-success">
+                    <i class="fas fa-check-circle"></i>
+                    ${message || '✅ Ready for next student.'}<br>
+                    <small style="font-size: 11px; color: #6c757d;">
+                        Please scan the next QR code.
+                    </small>
+                </div>
+            `;
+            statusMessage.className = 'status-box status-success';
+            statusMessage.innerHTML = '✅ <span class="scan-animation"></span> Scanner ready. Point at QR code.';
         }
 
         // ========================================
         // SCAN SUCCESS
         // ========================================
         function onScanSuccess(decodedText, decodedResult) {
-            // If locked (waiting for form confirmation), ignore new scans
             if (scanLocked) {
-                console.log('🔒 Scanner locked — ignoring scan until form confirms.');
+                console.log('🔒 Locked — ignoring scan.');
                 return;
             }
-
-            // Prevent duplicate scans of the same code
             if (lastScannedData === decodedText) return;
             lastScannedData = decodedText;
 
             console.log('📋 QR Scanned:', decodedText);
 
-            // Parse
             let email = '';
             let lrn = '';
 
@@ -375,15 +350,13 @@
             } else if (decodedText.includes('@')) {
                 email = decodedText;
             } else {
-                const lrnMatch = decodedText.match(/\d{12}/);
-                if (lrnMatch) lrn = lrnMatch[0];
+                const m = decodedText.match(/\d{12}/);
+                if (m) lrn = m[0];
             }
 
             scannedEmail = email;
             scannedLRN = lrn;
-
-            // Lock immediately so a second scan can't fire before the first is handled
-            scanLocked = true;
+            scanLocked = true;   // lock until form confirms
 
             let html = `
                 <div class="scanned-data">
@@ -400,13 +373,10 @@
             html += `</div>`;
             resultDiv.innerHTML = html;
 
-            // Send to attendance form
             setTimeout(function() { sendToAttendanceForm(); }, 400);
         }
 
-        function onScanError(errorMessage) {
-            // Silent — expected during normal scanning
-        }
+        function onScanError(errorMessage) { /* silent */ }
 
         // ========================================
         // EVENT LISTENERS
@@ -414,15 +384,12 @@
         startBtn.addEventListener('click', startScanner);
         stopBtn.addEventListener('click', stopScanner);
 
-        // ========================================
-        // START ON PAGE LOAD
-        // ========================================
         window.addEventListener('DOMContentLoaded', function() {
             function checkLibraryAndStart() {
                 if (typeof Html5Qrcode !== 'undefined') {
                     statusMessage.className = 'status-box status-info';
                     statusMessage.innerHTML = '📷 Ready. Starting camera...';
-                    setTimeout(function() { startScanner(); }, 500);
+                    setTimeout(startScanner, 500);
                 } else {
                     setTimeout(checkLibraryAndStart, 300);
                 }
@@ -430,75 +397,34 @@
             setTimeout(checkLibraryAndStart, 500);
         });
 
-        window.addEventListener('beforeunload', function() {
-            stopScanner();
-        });
+        window.addEventListener('beforeunload', function() { stopScanner(); });
 
         // ========================================
-        // LISTEN FOR CONFIRMATION FROM ATTENDANCE FORM
+        // LISTEN FOR FORM RESPONSES
         // ========================================
         window.addEventListener('message', function(event) {
-            console.log('📨 Message received in scanner:', event.data);
-
             if (!event.data || !event.data.type) return;
+            console.log('📨 Message from form:', event.data);
 
-            // ── SUCCESS: attendance was submitted → safe to close ──
+            // ── SUCCESS ──
             if (event.data.type === 'SCAN_CONFIRMED') {
-                if (confirmationTimeout) clearTimeout(confirmationTimeout);
-                console.log('✅ Attendance form confirmed receipt — closing scanner.');
-
-                resultDiv.innerHTML = `
-                    <div class="status-box status-success">
-                        <i class="fas fa-check-circle"></i>
-                        ✅ Attendance submitted successfully!<br>
-                        <small style="font-size: 11px; color: #6c757d;">
-                            Closing scanner window...
-                        </small>
-                    </div>
-                `;
-                statusMessage.className = 'status-box status-success';
-                statusMessage.innerHTML = '✅ Done. Closing...';
-
-                setTimeout(function() {
-                    try { window.close(); } catch(e) {}
-                }, 1200);
+                resetScannerForNextStudent('✅ Attendance submitted successfully!');
             }
 
-            // ── ALREADY ATTENDED: form says "this student already submitted today" ──
+            // ── ALREADY ATTENDED ──
             if (event.data.type === 'SCAN_ALREADY_ATTENDED') {
-                if (confirmationTimeout) clearTimeout(confirmationTimeout);
-                console.log('ℹ️ Student already attended today — closing scanner.');
-
-                resultDiv.innerHTML = `
-                    <div class="status-box status-warning">
-                        <i class="fas fa-info-circle"></i>
-                        ℹ️ This student already attended today.<br>
-                        <small style="font-size: 11px; color: #6c757d;">
-                            Closing scanner window...
-                        </small>
-                    </div>
-                `;
-                statusMessage.className = 'status-box status-warning';
-                statusMessage.innerHTML = 'ℹ️ Already attended. Closing...';
-
-                setTimeout(function() {
-                    try { window.close(); } catch(e) {}
-                }, 1500);
+                resetScannerForNextStudent('ℹ️ This student already attended today.');
             }
 
-            // ── ERROR: something went wrong with submission ──
+            // ── ERROR ──
             if (event.data.type === 'SCAN_ERROR') {
-                if (confirmationTimeout) clearTimeout(confirmationTimeout);
-                console.warn('⚠️ Attendance form reported an error.');
-
-                // Unlock so the student can try again
+                if (confirmationTimeout) { clearTimeout(confirmationTimeout); confirmationTimeout = null; }
                 scanLocked = false;
                 lastScannedData = '';
-
                 resultDiv.innerHTML = `
                     <div class="status-box status-error">
                         <i class="fas fa-exclamation-triangle"></i>
-                        ❌ Submission failed: ${event.data.message || 'Unknown error'}<br>
+                        ❌ ${event.data.message || 'Submission failed'}<br>
                         <small style="font-size: 11px;">Please scan again.</small>
                     </div>
                 `;
